@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Fotoarchiv{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Fotoarchiv</h1>
+
+<form method="get" class="filter-bar row g-2 align-items-end">
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="q">Suche</label>
+        <input type="text" class="form-control" id="q" name="q" value="{{ query }}" placeholder="Titel, Beschreibung, Person">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="kategorie">Kategorie</label>
+        <select class="form-select" id="kategorie" name="kategorie">
+            <option value="">Alle Kategorien</option>
+            {% for c in categories %}
+                <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="ort">Ort</label>
+        <select class="form-select" id="ort" name="ort">
+            <option value="">Alle Orte</option>
+            {% for l in locations %}
+                <option value="{{ l.slug }}" {% if l.slug == selected_location %}selected{% endif %}>{{ l.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-1" for="jahr">Jahr</label>
+        <input type="number" class="form-control" id="jahr" name="jahr" value="{{ selected_year }}" placeholder="z. B. 1965">
+    </div>
+    <div class="col-md-1">
+        <button type="submit" class="btn btn-accent w-100">Filtern</button>
+    </div>
+</form>
+
+{% if page_obj.object_list %}
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+        {% for photo in page_obj %}
+            <div class="col">
+                <a href="{{ photo.get_absolute_url }}" class="text-decoration-none text-reset">
+                    <div class="card photo-card h-100">
+                        <img src="{{ photo.image.url }}" alt="{{ photo.title }}" loading="lazy">
+                        <div class="card-body p-2">
+                            <div class="small fw-semibold text-truncate">{{ photo.title }}</div>
+                            <div class="small text-muted">{{ photo.date_display }}{% if photo.location %} &middot; {{ photo.location }}{% endif %}</div>
+                            <span class="badge badge-category mt-1">{{ photo.category }}</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+        <nav class="mt-4" aria-label="Seiten">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}{% if selected_category %}kategorie={{ selected_category }}&{% endif %}{% if selected_location %}ort={{ selected_location }}&{% endif %}{% if selected_year %}jahr={{ selected_year }}&{% endif %}seite={{ page_obj.previous_page_number }}">Zurück</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}{% if selected_category %}kategorie={{ selected_category }}&{% endif %}{% if selected_location %}ort={{ selected_location }}&{% endif %}{% if selected_year %}jahr={{ selected_year }}&{% endif %}seite={{ page_obj.next_page_number }}">Weiter</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <p class="text-muted">Keine Fotos gefunden.</p>
+{% endif %}
+{% endblock %}

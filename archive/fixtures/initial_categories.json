@@ -1,0 +1,52 @@
+[
+    {
+        "model": "archive.category",
+        "pk": 1,
+        "fields": {
+            "name": "Ortsansichten",
+            "slug": "ortsansichten",
+            "description": "Historische Ansichten von Teugn und seinen Ortsteilen.",
+            "order": 1
+        }
+    },
+    {
+        "model": "archive.category",
+        "pk": 2,
+        "fields": {
+            "name": "Vereine",
+            "slug": "vereine",
+            "description": "Fotos rund um das Vereinsleben in Teugn.",
+            "order": 2
+        }
+    },
+    {
+        "model": "archive.category",
+        "pk": 3,
+        "fields": {
+            "name": "Landwirtschaft",
+            "slug": "landwirtschaft",
+            "description": "Landwirtschaft und dörfliches Arbeitsleben.",
+            "order": 3
+        }
+    },
+    {
+        "model": "archive.category",
+        "pk": 4,
+        "fields": {
+            "name": "Personen & Familien",
+            "slug": "personen-familien",
+            "description": "Portraits und Familienfotos.",
+            "order": 4
+        }
+    },
+    {
+        "model": "archive.category",
+        "pk": 5,
+        "fields": {
+            "name": "Feste & Feiern",
+            "slug": "feste-feiern",
+            "description": "Kirchweih, Umzüge und andere Feierlichkeiten.",
+            "order": 5
+        }
+    }
+]

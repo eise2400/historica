@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="hero">
+    <h1 class="display-6 fw-bold">Historica Deing e.V.</h1>
+    <p class="lead">Wir bewahren und erforschen die Geschichte von Teugn &ndash; mit einem wachsenden Fotoarchiv,
+        Vereinsarbeit und Blick für Details.</p>
+    <a class="btn btn-accent btn-lg" href="{% url 'archive:photo_list' %}">Zum Fotoarchiv</a>
+    <a class="btn btn-outline-light btn-lg" href="{% url 'core:aufnahmeantrag' %}">Mitglied werden</a>
+</div>
+
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0">Neu im Fotoarchiv</h2>
+        <a href="{% url 'archive:photo_list' %}">Alle Fotos ansehen &rarr;</a>
+    </div>
+    {% if latest_photos %}
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            {% for photo in latest_photos %}
+                <div class="col">
+                    <a href="{{ photo.get_absolute_url }}" class="text-decoration-none text-reset">
+                        <div class="card photo-card h-100">
+                            <img src="{{ photo.image.url }}" alt="{{ photo.title }}">
+                            <div class="card-body p-2">
+                                <div class="small fw-semibold text-truncate">{{ photo.title }}</div>
+                                <span class="badge badge-category">{{ photo.category }}</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted">Es sind noch keine Fotos veröffentlicht.</p>
+    {% endif %}
+</section>
+
+<section class="mb-5">
+    <h2 class="h4 mb-3">Der Verein</h2>
+    <p>Historica Deing e.V. widmet sich der Erforschung und Vermittlung der Geschichte des Ortes Teugn.
+        Neben Vortragsabenden und Ausstellungen betreiben wir ein digitales Fotoarchiv, in dem historische
+        Aufnahmen aus den Bereichen Ortsansichten, Vereinsleben und Landwirtschaft gesammelt, zeitlich und
+        räumlich eingeordnet sowie mit Namen von abgebildeten Personen versehen werden.</p>
+    <a class="btn btn-outline-secondary" href="{% url 'core:satzung' %}">Unsere Satzung</a>
+    <a class="btn btn-outline-secondary" href="{% url 'core:kontakt' %}">Kontakt aufnehmen</a>
+</section>
+{% endblock %}

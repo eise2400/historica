@@ -1,0 +1,46 @@
+[
+    {
+        "model": "core.sitepage",
+        "pk": 1,
+        "fields": {
+            "slug": "impressum",
+            "title": "Impressum",
+            "content": "<p>Historica Deing e.V.<br>Vorsitzende(r): [Name einfügen]<br>Teugn</p><p>E-Mail: info@historica-deing.de</p><p>Vertreten durch den Vorstand gemäß § 26 BGB. Vereinsregister: [Registergericht, Registernummer einfügen].</p><p><em>Dieser Text kann vom Webmaster im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>",
+            "document": null,
+            "updated_at": "2026-08-03T00:00:00Z"
+        }
+    },
+    {
+        "model": "core.sitepage",
+        "pk": 2,
+        "fields": {
+            "slug": "datenschutz",
+            "title": "Datenschutz",
+            "content": "<p>Der Schutz Ihrer personenbezogenen Daten ist uns wichtig. Informationen zur Verarbeitung Ihrer Daten (z. B. bei Nutzung des Kontaktformulars oder bei der Registrierung) finden Sie hier.</p><p><em>Dieser Text kann vom Webmaster im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>",
+            "document": null,
+            "updated_at": "2026-08-03T00:00:00Z"
+        }
+    },
+    {
+        "model": "core.sitepage",
+        "pk": 3,
+        "fields": {
+            "slug": "satzung",
+            "title": "Satzung",
+            "content": "<p>Die Satzung des Historica Deing e.V. regelt Zweck, Organisation und Mitgliedschaft des Vereins.</p><p><em>Bitte laden Sie im Verwaltungsbereich die aktuelle Satzung als PDF hoch, damit sie hier zum Download angeboten wird.</em></p>",
+            "document": null,
+            "updated_at": "2026-08-03T00:00:00Z"
+        }
+    },
+    {
+        "model": "core.sitepage",
+        "pk": 4,
+        "fields": {
+            "slug": "aufnahmeantrag",
+            "title": "Aufnahmeantrag",
+            "content": "<p>Wir freuen uns über Ihr Interesse an einer Mitgliedschaft bei Historica Deing e.V. Sie können den Aufnahmeantrag online ausfüllen oder als PDF herunterladen und postalisch einreichen.</p>",
+            "document": null,
+            "updated_at": "2026-08-03T00:00:00Z"
+        }
+    }
+]

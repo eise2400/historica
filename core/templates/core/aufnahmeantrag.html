@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Aufnahmeantrag{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Aufnahmeantrag</h1>
+
+{% if page and page.content %}
+    <div class="content mb-4">{{ page.content|safe }}</div>
+{% endif %}
+{% if page and page.document %}
+    <a class="btn btn-outline-secondary mb-4" href="{{ page.document.url }}" download>
+        Aufnahmeantrag als PDF herunterladen
+    </a>
+{% endif %}
+
+<h2 class="h5 mb-3">Online beitreten</h2>
+<form method="post" novalidate class="row g-3">
+    {% csrf_token %}
+    {% for field in form %}
+        <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+                <div class="text-danger small">{{ field.errors|striptags }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    <div class="col-12">
+        <button type="submit" class="btn btn-accent">Aufnahmeantrag absenden</button>
+    </div>
+</form>
+{% endblock %}

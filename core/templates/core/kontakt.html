@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Kontakt{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Kontakt</h1>
+<div class="row">
+    <div class="col-md-7">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-accent">Nachricht senden</button>
+        </form>
+    </div>
+    <div class="col-md-5">
+        <h2 class="h5">Historica Deing e.V.</h2>
+        <address>
+            Vereinsheim Historica Deing<br>
+            Teugn<br>
+            E-Mail: <a href="mailto:info@historica-deing.de">info@historica-deing.de</a>
+        </address>
+    </div>
+</div>
+{% endblock %}

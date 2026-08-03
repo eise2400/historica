@@ -1,0 +1,59 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-brand sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-semibold" href="{% url 'core:home' %}">
+            {{ SITE_NAME }}
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'core:home' %}">Startseite</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'archive:photo_list' %}">Fotoarchiv</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        Verein
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'core:satzung' %}">Satzung</a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:aufnahmeantrag' %}">Aufnahmeantrag</a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:impressum' %}">Impressum</a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:datenschutz' %}">Datenschutz</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'core:kontakt' %}">Kontakt</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:profile' %}">{{ user.username }}</a>
+                    </li>
+                    {% if user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin:index' %}">Verwaltung</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link btn btn-link">Abmelden</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:login' %}">Anmelden</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:signup' %}">Registrieren</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
