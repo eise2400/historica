@@ -1,39 +1,42 @@
 # Historica Deing e.V. – Vereinswebsite
 
 Website für den Geschichts- und Heimatverein **Historica Deing e.V.** (Teugn),
-gebaut mit **Django** (Python). Neben den klassischen Vereinsseiten
-(Impressum, Datenschutz, Satzung, Aufnahmeantrag, Kontakt) steht ein
-**Fotoarchiv** im Mittelpunkt, in dem der Webmaster historische Fotos
-hochladen, kategorisieren, zeitlich und räumlich einordnen sowie mit
-Personen verknüpfen kann.
+gebaut mit **Laravel** (PHP) und **Filament** als Admin-Oberfläche. Neben den
+klassischen Vereinsseiten (Impressum, Datenschutz, Satzung, Aufnahmeantrag,
+Kontakt) steht ein **Fotoarchiv** im Mittelpunkt, in dem der Webmaster
+historische Fotos hochladen, kategorisieren, zeitlich und räumlich einordnen
+sowie mit Personen verknüpfen kann.
 
-## Warum Django?
+## Warum Laravel + Filament?
 
-Django wurde gewählt, weil es "batteries included" ist und genau die hier
-benötigten Bausteine mitbringt:
-
-- **Django Admin**: eine fertige, gut administrierbare Oberfläche für den
-  Webmaster – kein separates CMS nötig. Wurde um eine
-  **Klick-zum-Markieren-Funktion** erweitert (siehe unten).
-- **Auth-System**: Benutzerregistrierung/-anmeldung ist bereits vorbereitet,
+- **Filament** liefert eine fertige, gut administrierbare Oberfläche für den
+  Webmaster (vergleichbar mit Django Admin) – CRUD, Bildupload, Filter,
+  Relationen – ohne ein separates CMS entwickeln zu müssen. Für das Markieren
+  von Personen auf Gruppenfotos wurde eine **Klick-zum-Markieren-Funktion**
+  ergänzt (siehe unten).
+- **Laravel Breeze** stellt die öffentliche Registrierung/Anmeldung bereit,
   damit künftig auch registrierte Besucher Personen auf Fotos benennen
   können (als Vorschlag, der vom Webmaster freigegeben wird).
-- **ORM & Migrations**: saubere, versionierte Datenbankstruktur.
-- Große Verbreitung, viel Dokumentation, langfristig gut wartbar.
+- **Eloquent & Migrations**: saubere, versionierte Datenbankstruktur.
+- Sehr weit verbreitetes PHP-Framework, dadurch günstiges Standard-Hosting
+  möglich und langfristig gut wartbar.
 
 ## Projektstruktur
 
 ```
-historica/          Projekteinstellungen (settings.py, urls.py)
-core/                Startseite, Impressum, Datenschutz, Satzung,
-                     Aufnahmeantrag, Kontaktformular
-archive/             Fotoarchiv: Kategorien, Orte, Personen, Fotos,
-                     Personen-Markierungen
-accounts/            Registrierung/Login, Profil mit eigenen Vorschlägen
-templates/, static/  projektweite Templates & Styles (Bootstrap 5)
+app/Models/                 Category, Location, Person, Photo, PhotoPersonTag,
+                             SitePage, ContactMessage, MembershipApplication, User
+app/Http/Controllers/Public/ Startseite, Verein-Seiten, Kontakt, Aufnahmeantrag
+app/Http/Controllers/Archive/ Fotoarchiv (Liste, Detail, Personen)
+app/Http/Controllers/Admin/ Personen-Markierung (Klick-zum-Markieren-Endpunkte)
+app/Filament/Resources/     Admin-Oberfläche (Kategorien, Orte, Personen, Fotos,
+                             Seiten, Kontaktanfragen, Aufnahmeanträge)
+resources/views/            Blade-Templates (public/, archive/, layouts/, filament/)
+database/migrations/        Datenbankschema
+database/seeders/           Beispiel-Kategorien, Vereinsseiten, Webmaster-Konto
 ```
 
-### Datenmodell des Fotoarchivs (`archive/models.py`)
+### Datenmodell des Fotoarchivs
 
 - **Category** (Kategorie): z. B. Ortsansichten, Vereine, Landwirtschaft –
   frei im Admin erweiterbar.
@@ -49,58 +52,63 @@ templates/, static/  projektweite Templates & Styles (Bootstrap 5)
 
 ## Lokale Einrichtung
 
-Voraussetzung: Python 3.11+
+Voraussetzung: PHP 8.2+, Composer, Node.js
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+composer install
+npm install && npm run build
 
-cp .env.example .env        # Werte bei Bedarf anpassen
+cp .env.example .env
+php artisan key:generate
 
-python manage.py migrate
-python manage.py loaddata initial_categories initial_pages   # Beispiel-Kategorien & Seiten
-python manage.py createsuperuser                              # Webmaster-Konto anlegen
+touch database/database.sqlite   # oder DB_CONNECTION=mysql/postgresql in .env setzen
+php artisan migrate --seed       # legt Kategorien, Vereinsseiten & Webmaster-Konto an
 
-python manage.py runserver
+php artisan storage:link         # verknüpft public/storage für Bild-Uploads
+
+php artisan serve
 ```
 
-Anschließend ist die Seite unter <http://127.0.0.1:8000/> erreichbar, die
-Verwaltung unter <http://127.0.0.1:8000/admin/>.
+Die Beispiel-Daten legen ein Webmaster-Konto an:
+**webmaster@historica-deing.de** / **historica-webmaster** (Passwort nach dem
+ersten Login ändern!). Anschließend ist die Seite unter
+<http://127.0.0.1:8000/> erreichbar, die Verwaltung unter
+<http://127.0.0.1:8000/admin/>.
 
 ## Bedienung für den Webmaster (Admin)
 
 1. Im Admin unter **Fotoarchiv → Kategorien / Orte / Personen** die
-   Stammdaten pflegen (einige Kategorien sind bereits per Fixture
+   Stammdaten pflegen (einige Kategorien sind bereits über den Seeder
    angelegt).
-2. Unter **Fotoarchiv → Fotos → Foto hinzufügen** ein Bild hochladen,
-   Kategorie, Ort und Datierung angeben.
-3. Nach dem Speichern erscheint eine **Bildvorschau**. Für Gruppenfotos:
-   bei der gewünschten Person in der Personenliste auf **„Position
-   setzen“** klicken und anschließend auf die Stelle im Foto klicken – die
-   Koordinaten werden automatisch übernommen und als Markierung
-   angezeigt.
-4. Vorschläge registrierter Nutzer erscheinen als Personen-Markierung mit
-   Status „Ausstehend“ und können im Admin geprüft und auf „Freigegeben“
-   gesetzt werden.
+2. Unter **Fotoarchiv → Fotos → Neu** ein Bild hochladen, Kategorie, Ort und
+   Datierung angeben.
+3. In der Fotoliste über die Aktion **„Personen markieren“** gelangt man zur
+   Markierungsseite: bei der gewünschten Person auf **„Position setzen“**
+   klicken und anschließend auf die Stelle im Foto klicken – die Koordinaten
+   werden automatisch übernommen. Danach bei der Person auf „Speichern“
+   klicken.
+4. Vorschläge registrierter Nutzer erscheinen auf derselben Seite mit Status
+   „Ausstehend“ und können dort geprüft und auf „Freigegeben“ gesetzt werden.
+5. Unter **Verein → Seiten** lassen sich Impressum, Datenschutz, Satzung und
+   Aufnahmeantrag-Text bearbeiten sowie PDF-Dokumente zum Download hinterlegen.
+   Unter **Verein → Kontaktanfragen / Aufnahmeanträge** landen die
+   eingereichten Formulare.
 
 ## Tests
 
 ```bash
-python manage.py test
+php artisan test
 ```
 
 ## Deployment (Kurzfassung)
 
-- `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` und
-  `DJANGO_CSRF_TRUSTED_ORIGINS` setzen.
-- Für eine robustere Datenbank `DB_ENGINE=postgresql` samt Zugangsdaten
-  setzen (SQLite reicht für kleine Vereinsseiten, PostgreSQL empfiehlt
-  sich für den Produktivbetrieb).
-- `python manage.py collectstatic` ausführen (Static-Files werden über
-  [WhiteNoise](https://whitenoise.readthedocs.io/) ausgeliefert).
-- Als WSGI-Server dient `gunicorn historica.wsgi:application` (siehe
-  `Procfile` für z. B. Heroku/Render-artige Plattformen).
-- Für Uploads (`media/`) und die Datenbank sollte bei Plattformen mit
-  vergänglichem Dateisystem persistenter Speicher (Volume) bzw. eine
-  externe Datenbank eingerichtet werden.
+- `.env`: `APP_ENV=production`, `APP_DEBUG=false`, `APP_KEY` generieren,
+  `APP_URL` setzen.
+- Für eine robustere Datenbank `DB_CONNECTION=mysql` bzw. `pgsql` samt
+  Zugangsdaten setzen (SQLite reicht für kleine Vereinsseiten).
+- `composer install --no-dev --optimize-autoloader`,
+  `npm run build`, `php artisan migrate --force`,
+  `php artisan config:cache && php artisan route:cache && php artisan view:cache`.
+- `php artisan storage:link` für öffentlich erreichbare Foto-Uploads.
+- Klassisches Shared-/Managed-PHP-Hosting (Apache/Nginx + PHP-FPM) reicht für
+  diese Anwendung aus; ein Queue-Worker wird aktuell nicht benötigt.
