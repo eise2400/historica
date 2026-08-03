@@ -1,0 +1,119 @@
+parameters:
+    level: 8
+    phpVersion: 80402
+    paths:
+        - src
+        - static-analysis
+        - tests
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    checkStrictPrintfPlaceholderTypes: false
+    exceptions:
+        check:
+            missingCheckedExceptionInThrows: true
+        uncheckedExceptionClasses:
+            - ErrorException
+            - LogicException
+            - RuntimeException
+            - ValueError
+    ignoreErrors:
+        - identifier: missingType.generics
+
+        # Ignore missing declarations of checked exceptions in tests
+        -
+            identifier: missingType.checkedException
+            paths:
+                - static-analysis
+                - tests
+
+        # https://github.com/php-fig/log-test/issues/17
+        -
+            message: '~Parameter #1 \$record of method .*TestLogger~'
+            identifier: argument.type
+
+        # https://github.com/phpstan/phpstan-strict-rules/issues/103
+        -
+            message: '~^Construct empty\(\) is not allowed. Use more strict comparison\.~'
+            paths:
+                - src/Connections/PrimaryReadReplicaConnection.php
+                - src/Driver/*/Driver.php
+                - src/Driver/AbstractOracleDriver/EasyConnectString.php
+                - src/Platforms/*Platform.php
+                - src/Schema/*SchemaManager.php
+                - tests/TestUtil.php
+
+        # In some namespaces, we use array<mixed>, some elements of which are actually boolean or boolean-like integers
+        -
+            message: '~^Only booleans are allowed in .*, mixed given~'
+            paths:
+                - src/Platforms/*MetadataProvider.php
+                - src/Platforms/*Platform.php
+                - src/Schema/*SchemaManager.php
+
+        # Some APIs use variable method calls internally
+        -
+            message: '~^Variable method call on .*~'
+            paths:
+                - src/Schema/Column.php
+
+        # https://github.com/phpstan/phpstan/issues/4679
+        -
+            message: '~^Cannot call method writeTemporary\(\) on OCILob\|null\.$~'
+            paths:
+                - src/Driver/OCI8/Statement.php
+
+        # We're testing with invalid input.
+        -
+            message: '~array{driver: ''invalid_driver''} given\.$~'
+            path: tests/DriverManagerTest.php
+        -
+            message: '~array{driver: ''pdo_sqlite'', memory: true, wrapperClass: ''stdClass''} given\.$~'
+            path: tests/DriverManagerTest.php
+        -
+            message: '~array{driverClass: ''stdClass''} given\.$~'
+            path: tests/DriverManagerTest.php
+        -
+            message: '~^Parameter #1 \$driverOptions of method Doctrine\\DBAL\\Tests\\Functional\\Driver\\Mysqli\\ConnectionTest\:\:getConnection\(\) expects array<string, mixed>, .* given\.$~'
+            path: tests/Functional/Driver/Mysqli/ConnectionTest.php
+        -
+            message: '~^Parameter #1 \$params of method Doctrine\\DBAL\\Driver\:\:connect\(\) expects array~'
+            path: tests/Driver/PDO/*/DriverTest.php
+
+        # There is no way to make this assertion in the code,
+        # and the API doesn't support parametrization of returned column types.
+        -
+            message: '~^Method Doctrine\\DBAL\\Schema\\PostgreSQLSchemaManager::fetchTableOptionsByTable\(\) should return array<string, array<string, mixed>> but returns array<int\|string, array<string, mixed>>\.$~'
+            paths:
+                - src/Schema/PostgreSQLSchemaManager.php
+
+        # We don't need to declare the return type *that* fine-grained.
+        - '~^Method Doctrine\\DBAL\\Driver\\PDO\\Statement\:\:convertParamType\(\) never returns \d+ so it can be removed from the return type\.$~'
+
+        # PHPStan does not understand the array shapes returned by pg_fetch_*() methods.
+        - '~^Parameter #1 \$row of method Doctrine\\DBAL\\Driver\\PgSQL\\Result\:\:mapAssociativeRow\(\) expects array<string, string\|null>, array<int\|string, string\|null> given\.$~'
+        - '~^Parameter #1 \$row of method Doctrine\\DBAL\\Driver\\PgSQL\\Result\:\:mapNumericRow\(\) expects list<string\|null>, .* given\.$~'
+
+        # Required for Psalm compatibility
+        - '~^Property Doctrine\\DBAL\\Tests\\Types\\BaseDateTypeTestCase\:\:\$currentTimezone \(non-empty-string\) does not accept string\.$~'
+
+        # The @throws annotations are part of a contract. Even if the default implementation doen't throw those
+        # exceptions, the child implementations might do so.
+        -
+            identifier: throws.unusedType
+            path: src/Types/Type.php
+
+        # We don't narrow the return type of lastInsertId() yet.
+        - '/^Method Doctrine\\DBAL\\Driver\\.+\\Connection\:\:lastInsertId\(\) never returns (int|false) so it can be removed from the return type\.$/'
+
+        # Type check for legacy implementations of the Result interface
+        # TODO: remove in 5.0.0
+        - '~^Call to function method_exists\(\) with Doctrine\\DBAL\\Driver\\Result and ''getColumnName'' will always evaluate to true\.$~'
+
+        # TODO: Review these errors and fix them.
+        - identifier: phpunit.assertEquals
+includes:
+    - phpstan-baseline.neon
+    - phar://phpstan.phar/conf/bleedingEdge.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
