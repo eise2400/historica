@@ -20,7 +20,14 @@ müssen auf dem Webhoster nie ausgeführt werden.
 4. **`.env` anlegen**: `.env.example` als Vorlage per Datei-Manager zu `.env`
    kopieren, `APP_KEY` setzen (einmalig lokal generieren und eintragen, z. B.
    mit `php artisan key:generate --show` auf einem beliebigen Rechner mit
-   PHP), `APP_URL` und die Datenbank-Zugangsdaten eintragen.
+   PHP), `APP_URL` setzen. **Wichtig:** `.env.example` ist standardmäßig auf
+   SQLite eingestellt (für lokale Entwicklung) – für den Server unbedingt
+   `DB_CONNECTION=mysql` setzen (die Zeile ist als Kommentar bereits
+   vorhanden, nur einkommentieren) und `DB_HOST`/`DB_DATABASE`/`DB_USERNAME`/
+   `DB_PASSWORD` mit den Zugangsdaten aus Schritt 3 eintragen.
+   `SESSION_DRIVER`/`CACHE_STORE`/`QUEUE_CONNECTION` bitte auf `file`/`file`/
+   `sync` **belassen** – `historica-datenbank-import.sql` enthält bewusst
+   keine `sessions`-/`cache`-/`jobs`-Tabellen.
    `.env` ist in `.gitignore` und wird von `git pull` **nie** überschrieben.
 5. **Schreibrechte** setzen (falls nötig, je nach Hoster oft schon korrekt):
    `storage/`, `storage/framework/*`, `storage/logs/`, `bootstrap/cache/`,
