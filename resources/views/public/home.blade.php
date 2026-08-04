@@ -19,7 +19,7 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 @foreach ($latestPhotos as $photo)
                     <a href="{{ $photo->url }}" class="block bg-white rounded-md shadow-sm overflow-hidden hover:shadow-md transition">
-                        <img src="{{ $photo->image_url }}" alt="{{ $photo->title }}" class="h-40 w-full object-cover">
+                        <img src="{{ $photo->thumbnail_url }}" alt="{{ $photo->title }}" loading="lazy" class="h-40 w-full object-cover">
                         <div class="p-2">
                             <div class="text-sm font-medium truncate">{{ $photo->title }}</div>
                             <span class="inline-block mt-1 text-xs bg-brand-light text-brand-dark px-2 py-0.5 rounded">{{ $photo->category->name }}</span>

@@ -90,7 +90,10 @@ class PhotoResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image_path')->label('')->disk('public'),
+                Tables\Columns\ImageColumn::make('thumbnail_path')
+                    ->label('')
+                    ->disk('public')
+                    ->getStateUsing(fn (Photo $record) => $record->thumbnail_path ?: $record->image_path),
                 Tables\Columns\TextColumn::make('title')->label('Titel')->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Kategorie')->badge(),
                 Tables\Columns\TextColumn::make('location.name')->label('Ort'),
@@ -100,6 +103,8 @@ class PhotoResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->label('Hochgeladen am')->dateTime('d.m.Y')->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->paginated([25, 50, 100])
+            ->defaultPaginationPageOption(50)
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Kategorie')
@@ -124,6 +129,7 @@ class PhotoResource extends Resource
         return [
             'index' => Pages\ListPhotos::route('/'),
             'create' => Pages\CreatePhoto::route('/create'),
+            'bulk-upload' => Pages\BulkUploadPhotos::route('/bulk-upload'),
             'edit' => Pages\EditPhoto::route('/{record}/edit'),
             'tags' => Pages\ManageTags::route('/{record}/tags'),
         ];

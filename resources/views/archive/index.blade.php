@@ -39,7 +39,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             @foreach ($photos as $photo)
                 <a href="{{ $photo->url }}" class="block bg-white rounded-md shadow-sm overflow-hidden hover:shadow-md transition">
-                    <img src="{{ $photo->image_url }}" alt="{{ $photo->title }}" loading="lazy" class="h-44 w-full object-cover">
+                    <img src="{{ $photo->thumbnail_url }}" alt="{{ $photo->title }}" loading="lazy" class="h-44 w-full object-cover">
                     <div class="p-2">
                         <div class="text-sm font-medium truncate">{{ $photo->title }}</div>
                         <div class="text-xs text-gray-500">
