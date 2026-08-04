@@ -15,7 +15,8 @@
             <p class="text-sm text-gray-500 mt-2">
                 Bei der gewünschten Person unten auf <strong>„Position setzen“</strong> klicken und anschließend auf die
                 Stelle im Foto klicken, um die Position zu markieren. Danach bei der jeweiligen Person auf
-                <strong>„Speichern“</strong> klicken.
+                <strong>„Speichern“</strong> klicken. Die kleinen Ringe im Foto zeigen bereits gesetzte Positionen
+                (Name erscheint beim Überfahren mit der Maus).
             </p>
         </div>
 
@@ -24,7 +25,7 @@
                 <h3 class="font-semibold mb-3">Markierte Personen</h3>
                 <div class="space-y-4">
                     @forelse ($photo->personTags as $tag)
-                        <div class="border border-gray-200 rounded-md p-3" data-tag-row>
+                        <div class="border border-gray-200 rounded-md p-3" data-tag-row data-person-name="{{ $tag->person->full_name }}">
                             <form method="POST" action="{{ route('admin.photos.tags.update', [$photo, $tag]) }}" class="space-y-2">
                                 @csrf
                                 @method('PUT')
@@ -69,14 +70,22 @@
 
             <div class="border-t border-gray-200 pt-4">
                 <h3 class="font-semibold mb-3">Neue Person markieren</h3>
-                <form method="POST" action="{{ route('admin.photos.tags.store', $photo) }}" class="space-y-2" data-tag-row>
+                <form method="POST" action="{{ route('admin.photos.tags.store', $photo) }}" class="space-y-2" data-tag-row data-person-name="">
                     @csrf
-                    <select name="person_id" class="w-full rounded-md border-gray-300 text-sm">
-                        <option value="">– Bereits erfasste Person wählen –</option>
+                    <input
+                        type="text"
+                        id="new-person-search"
+                        list="new-person-options"
+                        placeholder="Bereits erfasste Person suchen …"
+                        class="w-full rounded-md border-gray-300 text-sm"
+                        autocomplete="off"
+                    >
+                    <datalist id="new-person-options">
                         @foreach ($people as $person)
-                            <option value="{{ $person->id }}">{{ $person->full_name }}</option>
+                            <option data-id="{{ $person->id }}" value="{{ $person->full_name }}"></option>
                         @endforeach
-                    </select>
+                    </datalist>
+                    <input type="hidden" name="person_id" id="new-person-id">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" name="new_first_name" placeholder="Vorname (neue Person)" class="rounded-md border-gray-300 text-sm">
                         <input type="text" name="new_last_name" placeholder="Nachname (neue Person)" class="rounded-md border-gray-300 text-sm">
@@ -112,16 +121,18 @@
                     if (isNaN(x) || isNaN(y)) return;
                     var dot = document.createElement('div');
                     dot.setAttribute('data-marker', '1');
+                    dot.title = row.dataset.personName || '';
                     dot.style.position = 'absolute';
                     dot.style.left = x + '%';
                     dot.style.top = y + '%';
-                    dot.style.width = '14px';
-                    dot.style.height = '14px';
-                    dot.style.marginLeft = '-7px';
-                    dot.style.marginTop = '-7px';
+                    dot.style.width = '12px';
+                    dot.style.height = '12px';
+                    dot.style.marginLeft = '-6px';
+                    dot.style.marginTop = '-6px';
                     dot.style.borderRadius = '50%';
-                    dot.style.background = 'rgba(168, 101, 43, 0.7)';
-                    dot.style.border = '2px solid #fff';
+                    dot.style.background = 'rgba(255, 255, 255, 0.35)';
+                    dot.style.border = '2px solid rgba(168, 101, 43, 0.9)';
+                    dot.style.pointerEvents = 'auto';
                     overlay.appendChild(dot);
                 });
             }
@@ -148,6 +159,17 @@
                     armedRow.querySelector('input[name="x_percent"]').value = Math.max(0, Math.min(100, xPct)).toFixed(2);
                     armedRow.querySelector('input[name="y_percent"]').value = Math.max(0, Math.min(100, yPct)).toFixed(2);
                     markers();
+                });
+            }
+
+            var search = document.getElementById('new-person-search');
+            var hiddenId = document.getElementById('new-person-id');
+            var options = document.getElementById('new-person-options');
+            if (search && hiddenId && options) {
+                search.addEventListener('input', function () {
+                    var match = Array.prototype.find.call(options.options, function (o) { return o.value === search.value; });
+                    hiddenId.value = match ? match.dataset.id : '';
+                    search.closest('[data-tag-row]').dataset.personName = search.value;
                 });
             }
 
