@@ -136,10 +136,13 @@ php artisan test
   diese Anwendung aus; ein Queue-Worker wird aktuell nicht benötigt.
 
 **Ohne SSH-Zugriff** (z. B. viele Plesk-Shared-Hosting-Pakete): siehe
-[`DEPLOY.md`](DEPLOY.md) auf dem `deploy`-Branch. Der bringt `vendor/` und
-die kompilierten Assets bereits fertig gebaut mit und lässt sich über Plesk
-Git per „Pull Updates“ ausrollen, ganz ohne Composer/npm/artisan auf dem
-Server. Ein SQL-Importskript für die Datenbank liegt dort ebenfalls bei.
+[`DEPLOY.md`](DEPLOY.md) auf dem `deploy`-Branch. Composer läuft dort über
+Plesks eigenen Composer-Button (kein SSH nötig); der Branch checkt deshalb
+nur noch die kompilierten Frontend-Assets (`public/build/`) mit ein, nicht
+mehr `vendor/` – Node/npm sind auf dem Zielhost weiterhin nicht bestätigt
+verfügbar. Der Branch lässt sich über Plesk Git per „Pull Updates“
+ausrollen; `artisan migrate` läuft weiterhin nicht auf dem Server, daher
+liegt dort zusätzlich ein SQL-Importskript für die Datenbank bei.
 
 `public/.user.ini` erhöht Upload- und Speicherlimits (wichtig für den
 Sammelupload) auf Hosts, die `.user.ini`-Overrides zulassen – kein
