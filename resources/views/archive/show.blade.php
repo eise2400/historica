@@ -1,18 +1,28 @@
 <x-app-layout :title="$photo->title">
     <div class="grid lg:grid-cols-12 gap-8">
         <div class="lg:col-span-8">
-            <div class="relative inline-block max-w-full">
+            <div class="relative inline-block max-w-full" id="photo-wrapper">
                 <img src="{{ $photo->image_url }}" alt="{{ $photo->title }}" class="max-w-full h-auto rounded-md">
                 @foreach ($tags as $tag)
                     @if ($tag->x_percent !== null && $tag->y_percent !== null)
-                        <span
-                            class="absolute w-4 h-4 -ml-2 -mt-2 rounded-full bg-accent/60 hover:bg-accent border-2 border-white cursor-pointer transition"
+                        <button
+                            type="button"
+                            class="person-marker"
+                            data-person-id="{{ $tag->person->id }}"
                             style="left: {{ $tag->x_percent }}%; top: {{ $tag->y_percent }}%;"
-                            title="{{ $tag->person->full_name }}{{ $tag->note ? ' – '.$tag->note : '' }}"
-                        ></span>
+                        >
+                            <span class="person-marker-label">
+                                {{ $tag->person->full_name }}{{ $tag->note ? ' – '.$tag->note : '' }}
+                            </span>
+                        </button>
                     @endif
                 @endforeach
             </div>
+            @if ($tags->whereNotNull('x_percent')->isNotEmpty())
+                <button type="button" id="toggle-markers-btn" class="mt-2 text-xs text-gray-500 hover:text-accent underline">
+                    Markierungen auf dem Foto anzeigen
+                </button>
+            @endif
 
             <h1 class="text-xl font-semibold mt-4">{{ $photo->title }}</h1>
             <p class="text-gray-500 mb-2">
@@ -35,7 +45,10 @@
             @if ($tags->isNotEmpty())
                 <ul class="space-y-1 mb-6">
                     @foreach ($tags as $tag)
-                        <li>
+                        <li
+                            class="person-list-item px-1 py-0.5"
+                            @if ($tag->x_percent !== null) data-person-id="{{ $tag->person->id }}" @endif
+                        >
                             <a href="{{ route('archive.person', $tag->person) }}" class="text-accent hover:text-accent-dark">{{ $tag->person->full_name }}</a>
                             @if ($tag->note)
                                 <span class="text-gray-500 text-sm"> &ndash; {{ $tag->note }}</span>
@@ -53,13 +66,21 @@
                 <form method="POST" action="{{ route('archive.suggest-tag', $photo) }}" class="space-y-3">
                     @csrf
                     <div>
-                        <label class="block text-xs font-medium mb-1" for="person_id">Bereits erfasste Person</label>
-                        <select id="person_id" name="person_id" class="w-full rounded-md border-gray-300 text-sm focus:border-accent focus:ring-accent">
-                            <option value="">– Bitte wählen –</option>
+                        <label class="block text-xs font-medium mb-1" for="person_search">Bereits erfasste Person</label>
+                        <input
+                            type="text"
+                            id="person_search"
+                            list="person_options"
+                            placeholder="Namen eingeben zum Suchen …"
+                            class="w-full rounded-md border-gray-300 text-sm focus:border-accent focus:ring-accent"
+                            autocomplete="off"
+                        >
+                        <datalist id="person_options">
                             @foreach ($people as $person)
-                                <option value="{{ $person->id }}">{{ $person->full_name }}</option>
+                                <option data-id="{{ $person->id }}" value="{{ $person->full_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="person_id" id="person_id">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -89,3 +110,44 @@
         </div>
     </div>
 </x-app-layout>
+
+@push('scripts')
+<script>
+    (function () {
+        const wrapper = document.getElementById('photo-wrapper');
+        const toggleBtn = document.getElementById('toggle-markers-btn');
+        if (toggleBtn && wrapper) {
+            toggleBtn.addEventListener('click', function () {
+                const visible = wrapper.classList.toggle('markers-visible');
+                toggleBtn.textContent = visible
+                    ? 'Markierungen auf dem Foto ausblenden'
+                    : 'Markierungen auf dem Foto anzeigen';
+            });
+        }
+
+        function setActive(personId, active) {
+            document.querySelectorAll('[data-person-id="' + personId + '"]').forEach(function (el) {
+                el.classList.toggle('is-active', active);
+            });
+        }
+
+        document.querySelectorAll('[data-person-id]').forEach(function (el) {
+            const id = el.getAttribute('data-person-id');
+            el.addEventListener('mouseenter', function () { setActive(id, true); });
+            el.addEventListener('mouseleave', function () { setActive(id, false); });
+            el.addEventListener('focus', function () { setActive(id, true); });
+            el.addEventListener('blur', function () { setActive(id, false); });
+        });
+
+        const search = document.getElementById('person_search');
+        const hiddenId = document.getElementById('person_id');
+        const options = document.getElementById('person_options');
+        if (search && hiddenId && options) {
+            search.addEventListener('input', function () {
+                const match = Array.from(options.options).find(function (o) { return o.value === search.value; });
+                hiddenId.value = match ? match.dataset.id : '';
+            });
+        }
+    })();
+</script>
+@endpush

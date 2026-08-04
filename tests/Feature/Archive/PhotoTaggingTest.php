@@ -28,6 +28,26 @@ class PhotoTaggingTest extends TestCase
         $response = $this->get($photo->url);
 
         $response->assertOk()->assertSee('Josef Huber');
+        // Markers are hidden by default (only revealed via hover/toggle) so a
+        // photo full of tagged people never gets buried under visible dots.
+        $response->assertSee('person-marker', false);
+        $response->assertSee('data-person-id="'.$person->id.'"', false);
+        $response->assertSee('Markierungen auf dem Foto anzeigen');
+    }
+
+    public function test_marker_toggle_is_not_shown_without_positioned_tags(): void
+    {
+        $photo = Photo::factory()->create();
+        $person = Person::factory()->create();
+        PhotoPersonTag::create([
+            'photo_id' => $photo->id,
+            'person_id' => $person->id,
+            'status' => PhotoPersonTag::STATUS_APPROVED,
+        ]);
+
+        $response = $this->get($photo->url);
+
+        $response->assertOk()->assertDontSee('Markierungen auf dem Foto anzeigen');
     }
 
     public function test_anonymous_user_cannot_suggest_tag(): void

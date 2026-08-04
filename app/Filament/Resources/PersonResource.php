@@ -48,6 +48,8 @@ class PersonResource extends Resource
                 Tables\Columns\TextColumn::make('photos_count')->label('Anzahl Fotos')->counts('photos'),
             ])
             ->defaultSort('last_name')
+            ->paginated([25, 50, 100])
+            ->defaultPaginationPageOption(50)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

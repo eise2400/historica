@@ -40,7 +40,10 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            // Points directly into the public webroot instead of storage/app/public,
+            // so uploaded files are reachable without a storage:link symlink - some
+            // shared hosts (no SSH/CLI access) can never run `artisan storage:link`.
+            'root' => public_path('storage'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -71,10 +74,12 @@ return [
     | `storage:link` Artisan command is executed. The array keys should be
     | the locations of the links and the values should be their targets.
     |
+    | Not used here: the "public" disk above already lives inside the public
+    | webroot, so no symlink is needed (this app targets hosts without
+    | SSH/CLI access, where `artisan storage:link` could never be run anyway).
+    |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    'links' => [],
 
 ];
