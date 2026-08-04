@@ -16,12 +16,11 @@
 /public/hot
 /storage/*.key
 /storage/pail
-/vendor
 /database/database.sqlite
 Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Deploy branch: only public/build/ (compiled Vite assets) is committed on
-# purpose, since Node/npm are not confirmed available on the target host.
-# vendor/ is installed on the server itself via Plesk's Composer button.
+# Deploy branch: vendor/, compiled assets and the package-discovery cache are
+# committed on purpose so Plesk's Git integration can pull a ready-to-run
+# build without Composer/npm/artisan ever running on the server.
