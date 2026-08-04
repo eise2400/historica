@@ -13,7 +13,12 @@ class ListPhotos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\Action::make('bulkUpload')
+                ->label('Sammelupload')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->url(fn () => PhotoResource::getUrl('bulk-upload')),
+            Actions\CreateAction::make()
+                ->label('Foto hinzufügen'),
         ];
     }
 }
