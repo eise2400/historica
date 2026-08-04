@@ -13,7 +13,6 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
 /public/hot
 /storage/*.key
 /storage/pail
@@ -22,3 +21,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Deploy branch: only public/build/ (compiled Vite assets) is committed on
+# purpose, since Node/npm are not confirmed available on the target host.
+# vendor/ is installed on the server itself via Plesk's Composer button.
