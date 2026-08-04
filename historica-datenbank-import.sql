@@ -10,7 +10,7 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) NOT NULL,
   `batch` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 INSERT INTO `migrations` VALUES
 (1,'0001_01_01_000000_create_users_table',1),
@@ -24,7 +24,8 @@ INSERT INTO `migrations` VALUES
 (9,'2026_08_03_205736_create_contact_messages_table',1),
 (10,'2026_08_03_205736_create_membership_applications_table',1),
 (11,'2026_08_03_205736_create_photo_person_tags_table',1),
-(12,'2026_08_03_205736_create_site_pages_table',1);
+(12,'2026_08_03_205736_create_site_pages_table',1),
+(13,'2026_08_04_081220_add_thumbnail_and_index_to_photos_table',1);
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -43,7 +44,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 INSERT INTO `users` VALUES
-(1,'Webmaster','webmaster@historica-deing.de','2026-08-03 23:49:36','$2y$12$yv85us19utIEzn57pj.JZepoOvkq1ARcLK5rPfAZNXJeYg8esqRC.',1,NULL,'2026-08-03 23:49:36','2026-08-03 23:49:36');
+(1,'Webmaster','webmaster@historica-deing.de','2026-08-04 08:26:30','$2y$12$mvKKxfWdXsx.qCSzCKuVBeWOEXcj2ulEmNZIlIxYAEGh22Qw08K1y',1,NULL,'2026-08-04 08:26:30','2026-08-04 08:26:30');
 DROP TABLE IF EXISTS `categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -61,11 +62,11 @@ CREATE TABLE `categories` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 INSERT INTO `categories` VALUES
-(1,'Ortsansichten','ortsansichten','Historische Ansichten von Teugn und seinen Ortsteilen.',1,'2026-08-03 23:49:36','2026-08-03 23:49:36'),
-(2,'Vereine','vereine','Fotos rund um das Vereinsleben in Teugn.',2,'2026-08-03 23:49:36','2026-08-03 23:49:36'),
-(3,'Landwirtschaft','landwirtschaft','Landwirtschaft und dörfliches Arbeitsleben.',3,'2026-08-03 23:49:36','2026-08-03 23:49:36'),
-(4,'Personen & Familien','personen-familien','Portraits und Familienfotos.',4,'2026-08-03 23:49:36','2026-08-03 23:49:36'),
-(5,'Feste & Feiern','feste-feiern','Kirchweih, Umzüge und andere Feierlichkeiten.',5,'2026-08-03 23:49:36','2026-08-03 23:49:36');
+(1,'Ortsansichten','ortsansichten','Historische Ansichten von Teugn und seinen Ortsteilen.',1,'2026-08-04 08:26:30','2026-08-04 08:26:30'),
+(2,'Vereine','vereine','Fotos rund um das Vereinsleben in Teugn.',2,'2026-08-04 08:26:30','2026-08-04 08:26:30'),
+(3,'Landwirtschaft','landwirtschaft','Landwirtschaft und dörfliches Arbeitsleben.',3,'2026-08-04 08:26:30','2026-08-04 08:26:30'),
+(4,'Personen & Familien','personen-familien','Portraits und Familienfotos.',4,'2026-08-04 08:26:30','2026-08-04 08:26:30'),
+(5,'Feste & Feiern','feste-feiern','Kirchweih, Umzüge und andere Feierlichkeiten.',5,'2026-08-04 08:26:30','2026-08-04 08:26:30');
 DROP TABLE IF EXISTS `locations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -107,6 +108,7 @@ CREATE TABLE `photos` (
   `title` varchar(255) NOT NULL,
   `slug` varchar(255) NOT NULL,
   `image_path` varchar(255) NOT NULL,
+  `thumbnail_path` varchar(255) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `category_id` bigint(20) unsigned NOT NULL,
   `location_id` bigint(20) unsigned DEFAULT NULL,
@@ -124,6 +126,7 @@ CREATE TABLE `photos` (
   KEY `photos_category_id_foreign` (`category_id`),
   KEY `photos_location_id_foreign` (`location_id`),
   KEY `photos_uploaded_by_foreign` (`uploaded_by`),
+  KEY `photos_is_published_created_at_index` (`is_published`,`created_at`),
   CONSTRAINT `photos_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `photos_location_id_foreign` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE SET NULL,
   CONSTRAINT `photos_uploaded_by_foreign` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
@@ -169,10 +172,10 @@ CREATE TABLE `site_pages` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 INSERT INTO `site_pages` VALUES
-(1,'impressum','Impressum','<p>Historica Deing e.V.<br>Vorsitzende(r): [Name einfügen]<br>Teugn</p><p>E-Mail: info@historica-deing.de</p><p>Vertreten durch den Vorstand gemäß § 26 BGB. Vereinsregister: [Registergericht, Registernummer einfügen].</p><p><em>Dieser Text kann im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>',NULL,'2026-08-03 23:49:36'),
-(2,'datenschutz','Datenschutz','<p>Der Schutz Ihrer personenbezogenen Daten ist uns wichtig. Informationen zur Verarbeitung Ihrer Daten (z. B. bei Nutzung des Kontaktformulars oder bei der Registrierung) finden Sie hier.</p><p><em>Dieser Text kann im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>',NULL,'2026-08-03 23:49:36'),
-(3,'satzung','Satzung','<p>Die Satzung des Historica Deing e.V. regelt Zweck, Organisation und Mitgliedschaft des Vereins.</p><p><em>Bitte laden Sie im Verwaltungsbereich die aktuelle Satzung als PDF hoch, damit sie hier zum Download angeboten wird.</em></p>',NULL,'2026-08-03 23:49:36'),
-(4,'aufnahmeantrag','Aufnahmeantrag','<p>Wir freuen uns über Ihr Interesse an einer Mitgliedschaft bei Historica Deing e.V. Sie können den Aufnahmeantrag online ausfüllen oder als PDF herunterladen und postalisch einreichen.</p>',NULL,'2026-08-03 23:49:36');
+(1,'impressum','Impressum','<p>Historica Deing e.V.<br>Vorsitzende(r): [Name einfügen]<br>Teugn</p><p>E-Mail: info@historica-deing.de</p><p>Vertreten durch den Vorstand gemäß § 26 BGB. Vereinsregister: [Registergericht, Registernummer einfügen].</p><p><em>Dieser Text kann im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>',NULL,'2026-08-04 08:26:30'),
+(2,'datenschutz','Datenschutz','<p>Der Schutz Ihrer personenbezogenen Daten ist uns wichtig. Informationen zur Verarbeitung Ihrer Daten (z. B. bei Nutzung des Kontaktformulars oder bei der Registrierung) finden Sie hier.</p><p><em>Dieser Text kann im Verwaltungsbereich unter „Seiten“ bearbeitet werden.</em></p>',NULL,'2026-08-04 08:26:30'),
+(3,'satzung','Satzung','<p>Die Satzung des Historica Deing e.V. regelt Zweck, Organisation und Mitgliedschaft des Vereins.</p><p><em>Bitte laden Sie im Verwaltungsbereich die aktuelle Satzung als PDF hoch, damit sie hier zum Download angeboten wird.</em></p>',NULL,'2026-08-04 08:26:30'),
+(4,'aufnahmeantrag','Aufnahmeantrag','<p>Wir freuen uns über Ihr Interesse an einer Mitgliedschaft bei Historica Deing e.V. Sie können den Aufnahmeantrag online ausfüllen oder als PDF herunterladen und postalisch einreichen.</p>',NULL,'2026-08-04 08:26:30');
 DROP TABLE IF EXISTS `contact_messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
