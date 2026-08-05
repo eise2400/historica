@@ -30,8 +30,13 @@ müssen auf dem Webhoster nie ausgeführt werden.
    keine `sessions`-/`cache`-/`jobs`-Tabellen.
    `.env` ist in `.gitignore` und wird von `git pull` **nie** überschrieben.
 5. **Schreibrechte** setzen (falls nötig, je nach Hoster oft schon korrekt):
-   `storage/`, `storage/framework/*`, `storage/logs/`, `bootstrap/cache/`,
-   `public/storage/`.
+   `storage/`, `storage/app/private/`, `storage/framework/*`, `storage/logs/`,
+   `bootstrap/cache/`, `public/storage/`. **Wichtig:** `storage/app/private/`
+   wird gerne vergessen, ist aber Pflicht – dort legt Livewire beim
+   Foto-Upload (Sammelupload wie Einzel-Upload) temporäre Dateien ab, *bevor*
+   das Formular abgeschickt wird. Fehlen dort die Schreibrechte, hängt der
+   Upload lautlos fest und der „Fotos anlegen“/„Speichern“-Button scheint
+   nicht zu reagieren, obwohl technisch alles korrekt eingerichtet ist.
 
 ## Künftige Updates
 
