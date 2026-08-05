@@ -69,6 +69,13 @@ class BulkUploadPhotos extends Page implements HasForms
                     // Livewire caps uploads at 12 MB by default regardless of
                     // php.ini - match public/.user.ini's upload_max_filesize.
                     ->maxSize(25 * 1024)
+                    // Uploading many files in parallel races Livewire's file-state
+                    // sync (the entangled `images` array updates after every single
+                    // file finishes, which re-syncs FilePond's file list from the
+                    // server mid-upload for the others) and throws "Alpine
+                    // Expression Error: file is undefined" for $wire.upload.
+                    // Uploading one at a time avoids the race entirely.
+                    ->maxParallelUploads(1)
                     ->reorderable(false)
                     ->helperText('Bis zu 300 Dateien pro Durchgang. Der Dateiname (ohne Endung) wird als vorläufiger Titel verwendet und kann später pro Foto angepasst werden.'),
             ])

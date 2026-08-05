@@ -29,6 +29,14 @@ müssen auf dem Webhoster nie ausgeführt werden.
    `sync` **belassen** – `historica-datenbank-import.sql` enthält bewusst
    keine `sessions`-/`cache`-/`jobs`-Tabellen.
    `.env` ist in `.gitignore` und wird von `git pull` **nie** überschrieben.
+   **`APP_URL` muss exakt mit `https://` beginnen** (z. B.
+   `APP_URL=https://www.historica-deing.de`), sofern die Seite über HTTPS
+   aufgerufen wird (Normalfall). Alle Foto- und Bild-URLs werden direkt aus
+   `APP_URL` gebildet (`config/filesystems.php`, `public`-Disk) – steht dort
+   versehentlich `http://`, während die Seite selbst über `https://`
+   aufgerufen wird, blockiert der Browser das Nachladen der Bilder als
+   „mixed content“ (Firefox: „blocked loading mixed active content“), und
+   z. B. im Foto-Bearbeiten-Formular wird das Bild nicht angezeigt.
 5. **Schreibrechte** setzen (falls nötig, je nach Hoster oft schon korrekt):
    `storage/`, `storage/app/private/`, `storage/framework/*`, `storage/logs/`,
    `bootstrap/cache/`, `public/storage/`. **Wichtig:** `storage/app/private/`
