@@ -50,6 +50,9 @@ class PhotoResource extends Resource
                         ->disk('public')
                         ->directory('photos')
                         ->required()
+                        // Livewire caps uploads at 12 MB by default regardless
+                        // of php.ini - match public/.user.ini's upload_max_filesize.
+                        ->maxSize(25 * 1024)
                         ->columnSpanFull(),
                     Forms\Components\Textarea::make('description')
                         ->label('Beschreibung')

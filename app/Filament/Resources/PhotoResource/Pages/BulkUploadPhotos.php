@@ -66,6 +66,9 @@ class BulkUploadPhotos extends Page implements HasForms
                     ->maxFiles(300)
                     ->minFiles(1)
                     ->required()
+                    // Livewire caps uploads at 12 MB by default regardless of
+                    // php.ini - match public/.user.ini's upload_max_filesize.
+                    ->maxSize(25 * 1024)
                     ->reorderable(false)
                     ->helperText('Bis zu 300 Dateien pro Durchgang. Der Dateiname (ohne Endung) wird als vorläufiger Titel verwendet und kann später pro Foto angepasst werden.'),
             ])
