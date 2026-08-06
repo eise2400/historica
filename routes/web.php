@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PhotoBulkUploadController;
 use App\Http\Controllers\Admin\PhotoTagController;
 use App\Http\Controllers\Archive\PhotoController;
 use App\Http\Controllers\ProfileController;
@@ -42,6 +43,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::prefix('admin')->middleware(['auth'])->group(function () {
+    Route::post('/photos/bulk-upload', [PhotoBulkUploadController::class, 'store'])->name('admin.photos.bulk-upload.store');
     Route::post('/photos/{photo}/tags', [PhotoTagController::class, 'store'])->name('admin.photos.tags.store');
     Route::put('/photos/{photo}/tags/{tag}', [PhotoTagController::class, 'update'])->name('admin.photos.tags.update');
     Route::delete('/photos/{photo}/tags/{tag}', [PhotoTagController::class, 'destroy'])->name('admin.photos.tags.destroy');
