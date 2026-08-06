@@ -41,10 +41,25 @@ müssen auf dem Webhoster nie ausgeführt werden.
    `storage/`, `storage/app/private/`, `storage/framework/*`, `storage/logs/`,
    `bootstrap/cache/`, `public/storage/`. **Wichtig:** `storage/app/private/`
    wird gerne vergessen, ist aber Pflicht – dort legt Livewire beim
-   Foto-Upload (Sammelupload wie Einzel-Upload) temporäre Dateien ab, *bevor*
-   das Formular abgeschickt wird. Fehlen dort die Schreibrechte, hängt der
-   Upload lautlos fest und der „Fotos anlegen“/„Speichern“-Button scheint
-   nicht zu reagieren, obwohl technisch alles korrekt eingerichtet ist.
+   Einzel-Foto-Upload (Formular „Foto bearbeiten“/„Foto anlegen“) temporäre
+   Dateien ab, *bevor* das Formular abgeschickt wird. Fehlen dort die
+   Schreibrechte, hängt der Upload lautlos fest und der „Speichern“-Button
+   scheint nicht zu reagieren, obwohl technisch alles korrekt eingerichtet
+   ist. Der **Sammelupload** verwendet dagegen kein Livewire-Temp-Verzeichnis
+   mehr (klassisches Formular, siehe `public/.user.ini`-Hinweis unten) und
+   ist von dieser Einschränkung nicht betroffen.
+6. **`public/.user.ini`** wird automatisch mit ausgeliefert und muss nicht
+   manuell angepasst werden, sofern der Hoster `.user.ini`-Dateien
+   respektiert (bei Plesk/PHP-FPM normalerweise der Fall, siehe Kommentar in
+   der Datei). Sie hebt `upload_max_filesize`/`post_max_size`/
+   `max_file_uploads`/`memory_limit`/`max_execution_time`/`max_input_time`
+   über die PHP-Standardwerte an – nötig, weil der Sammelupload Fotos in
+   Gruppen von 15 Dateien pro Anfrage sendet (`post_max_size = 400M`,
+   `max_file_uploads = 20`). Falls der Sammelupload bei sehr großen oder
+   sehr vielen Dateien dennoch mit einem Server-Fehler abbricht, sind das
+   die ersten Werte, die geprüft/erhöht werden sollten (Wirksamkeit oft erst
+   nach `user_ini.cache_ttl`, üblicherweise bis zu 5 Minuten, oder einem
+   PHP-FPM-Neustart durch den Hoster).
 
 ## Künftige Updates
 
