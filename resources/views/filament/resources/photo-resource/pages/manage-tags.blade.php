@@ -1,4 +1,6 @@
 <x-filament-panels::page>
+    @include('filament.partials.accent-buttons')
+
     @if (session('success'))
         <div class="mb-4 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
             {{ session('success') }}
@@ -31,7 +33,7 @@
                                 @method('PUT')
                                 <div class="flex items-center justify-between">
                                     <span class="font-medium">{{ $tag->person->full_name }}</span>
-                                    <button type="button" class="set-position-btn text-xs px-2 py-1 rounded border border-accent text-accent hover:bg-accent hover:text-white">
+                                    <button type="button" class="set-position-btn btn-accent-outline text-xs px-2 py-1 rounded border">
                                         Position setzen
                                     </button>
                                 </div>
@@ -49,7 +51,7 @@
                                             <option value="{{ $value }}" @selected($tag->status === $value)>{{ $label }}</option>
                                         @endforeach
                                     </select>
-                                    <button type="submit" class="text-xs px-3 py-1.5 rounded bg-accent text-white hover:bg-accent-dark">Speichern</button>
+                                    <button type="submit" class="btn-accent text-xs px-3 py-1.5 rounded">Speichern</button>
                                 </div>
                                 @if ($tag->suggestedBy)
                                     <p class="text-xs text-gray-400">Vorgeschlagen von {{ $tag->suggestedBy->name }}</p>
@@ -91,7 +93,7 @@
                         <input type="text" name="new_last_name" placeholder="Nachname (neue Person)" class="rounded-md border-gray-300 text-sm">
                     </div>
                     <div class="flex items-center justify-between">
-                        <button type="button" class="set-position-btn text-xs px-2 py-1 rounded border border-accent text-accent hover:bg-accent hover:text-white">
+                        <button type="button" class="set-position-btn btn-accent-outline text-xs px-2 py-1 rounded border">
                             Position setzen
                         </button>
                     </div>
@@ -101,7 +103,7 @@
                     </div>
                     <input type="text" name="note" placeholder="Anmerkung zur Position" class="w-full rounded-md border-gray-300 text-sm">
                     <input type="hidden" name="status" value="approved">
-                    <button type="submit" class="text-sm px-4 py-2 rounded bg-accent text-white hover:bg-accent-dark">Person markieren</button>
+                    <button type="submit" class="btn-accent text-sm px-4 py-2 rounded">Person markieren</button>
                 </form>
             </div>
         </div>
@@ -140,9 +142,9 @@
             document.querySelectorAll('.set-position-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     document.querySelectorAll('.set-position-btn').forEach(function (b) {
-                        b.classList.remove('bg-accent', 'text-white');
+                        b.classList.remove('is-armed');
                     });
-                    btn.classList.add('bg-accent', 'text-white');
+                    btn.classList.add('is-armed');
                     armedRow = btn.closest('[data-tag-row]');
                 });
             });

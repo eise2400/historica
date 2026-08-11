@@ -47,7 +47,10 @@ class PhotoTaggingTest extends TestCase
 
         $response = $this->get($photo->url);
 
-        $response->assertOk()->assertDontSee('Markierungen auf dem Foto anzeigen');
+        // Not assertDontSee('Markierungen auf dem Foto anzeigen') - that text
+        // also appears as a JS string literal in the toggle's script, which
+        // renders on every photo page regardless of whether the button does.
+        $response->assertOk()->assertDontSee('id="toggle-markers-btn"', false);
     }
 
     public function test_anonymous_user_cannot_suggest_tag(): void
