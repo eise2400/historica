@@ -1,4 +1,20 @@
 <x-app-layout :title="$photo->title">
+    <div class="flex items-center justify-between text-sm mb-4">
+        @if ($previousPhoto)
+            <a href="{{ $previousPhoto->url }}{{ count($filters) ? '?'.http_build_query($filters) : '' }}" class="text-accent hover:text-accent-dark">&larr; Vorheriges Foto</a>
+        @else
+            <span></span>
+        @endif
+
+        <a href="{{ route('archive.index', $filters) }}" class="text-gray-500 hover:text-accent">Zur Übersicht</a>
+
+        @if ($nextPhoto)
+            <a href="{{ $nextPhoto->url }}{{ count($filters) ? '?'.http_build_query($filters) : '' }}" class="text-accent hover:text-accent-dark">Nächstes Foto &rarr;</a>
+        @else
+            <span></span>
+        @endif
+    </div>
+
     <div class="grid lg:grid-cols-12 gap-8">
         <div class="lg:col-span-8">
             <div class="relative inline-block max-w-full" id="photo-wrapper">
@@ -109,10 +125,8 @@
             @endauth
         </div>
     </div>
-</x-app-layout>
 
-@push('scripts')
-<script>
+    <script>
     (function () {
         const wrapper = document.getElementById('photo-wrapper');
         const toggleBtn = document.getElementById('toggle-markers-btn');
@@ -150,4 +164,4 @@
         }
     })();
 </script>
-@endpush
+</x-app-layout>

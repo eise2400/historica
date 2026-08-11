@@ -1,4 +1,6 @@
 <x-filament-panels::page>
+    @include('filament.partials.accent-buttons')
+
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Mehrere Fotos auf einmal hochladen. Kategorie, Ort und Datierung gelten dabei für den
         ganzen Stapel – Titel, Beschreibung und Personen-Markierungen werden anschließend pro
@@ -49,7 +51,7 @@
         <div id="bulk-upload-error" class="text-sm text-red-600" role="alert"></div>
 
         <button type="submit" id="bulk-upload-submit"
-                class="text-sm px-4 py-2 rounded bg-accent text-white hover:bg-accent-dark disabled:opacity-50">
+                class="btn-accent text-sm px-4 py-2 rounded disabled:opacity-50">
             Fotos anlegen
         </button>
     </form>
