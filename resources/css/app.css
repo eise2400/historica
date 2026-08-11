@@ -33,7 +33,8 @@
 
 #photo-wrapper.markers-visible .person-marker {
     opacity: 1;
-    border-color: rgba(168, 101, 43, .55);
+    background: rgba(255, 255, 255, .35);
+    border-color: #a8652b;
 }
 
 .person-marker:hover,
