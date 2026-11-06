@@ -25,6 +25,16 @@ class Photo extends Model
 
     public const THUMBNAIL_HEIGHT = 360;
 
+    /**
+     * Uploaded photos are capped to this size before being stored - the
+     * site never serves true full-resolution originals. Scans/photos from
+     * a phone or flatbed scanner can be tens of megapixels; nothing on the
+     * site ever displays more than this.
+     */
+    public const MAX_IMAGE_DIMENSION = 2000;
+
+    public const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
     protected $fillable = [
         'title', 'slug', 'image_path', 'thumbnail_path', 'description',
         'category_id', 'location_id',
@@ -54,6 +64,10 @@ class Photo extends Model
                 }
                 $photo->slug = $slug;
             }
+
+            if ($photo->image_path && $photo->isDirty('image_path')) {
+                $photo->optimizeImage();
+            }
         });
 
         static::saved(function (Photo $photo) {
@@ -61,6 +75,59 @@ class Photo extends Model
                 $photo->generateThumbnail();
             }
         });
+    }
+
+    /**
+     * The site never needs more than MAX_IMAGE_DIMENSION px / MAX_IMAGE_BYTES
+     * of a photo - full-resolution originals (phone photos, flatbed scans)
+     * are discarded in favour of a capped, re-encoded JPEG. Runs before the
+     * photo is saved so the smaller path is what actually gets persisted.
+     * Best-effort: a failure here must not block saving the photo itself,
+     * it just leaves the originally uploaded file untouched.
+     */
+    public function optimizeImage(): void
+    {
+        $disk = Storage::disk('public');
+        $originalPath = $this->image_path;
+
+        if (! $disk->exists($originalPath)) {
+            return;
+        }
+
+        $newPath = 'photos/'.now()->format('Y/m').'/'.Str::ulid().'.jpg';
+
+        try {
+            $manager = ImageManager::gd();
+            $image = $manager->read($disk->path($originalPath))
+                ->scaleDown(self::MAX_IMAGE_DIMENSION, self::MAX_IMAGE_DIMENSION);
+
+            $quality = 85;
+            do {
+                $encoded = $image->toJpeg(quality: $quality);
+                $quality -= 10;
+            } while (strlen((string) $encoded) > self::MAX_IMAGE_BYTES && $quality >= 40);
+
+            $disk->makeDirectory(dirname($newPath));
+            $disk->put($newPath, (string) $encoded);
+        } catch (Throwable $e) {
+            Log::warning("Bildoptimierung für Foto #{$this->id} fehlgeschlagen: {$e->getMessage()}");
+
+            return;
+        }
+
+        if ($newPath !== $originalPath) {
+            $disk->delete($originalPath);
+        }
+
+        // Replacing an existing photo's image (e.g. re-uploading via the
+        // edit form) leaves the previous optimized file orphaned on disk
+        // otherwise - clean it up too, unless it's somehow the same file.
+        $previousPath = $this->getOriginal('image_path');
+        if ($previousPath && $previousPath !== $originalPath && $previousPath !== $newPath) {
+            $disk->delete($previousPath);
+        }
+
+        $this->image_path = $newPath;
     }
 
     /**

@@ -65,4 +65,37 @@ class PhotoTagControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_store_with_markmode_redirects_with_markmode_query_string(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $photo = Photo::factory()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.photos.tags.store', $photo), [
+            'new_first_name' => 'Anna',
+            'new_last_name' => 'Maier',
+            'x_percent' => 55.5,
+            'y_percent' => 20,
+            'status' => PhotoPersonTag::STATUS_APPROVED,
+            'markmode' => '1',
+        ]);
+
+        $response->assertRedirect(route('filament.admin.resources.photos.tags', ['record' => $photo, 'markmode' => 1]));
+    }
+
+    public function test_store_without_markmode_redirects_without_markmode_query_string(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $photo = Photo::factory()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.photos.tags.store', $photo), [
+            'new_first_name' => 'Anna',
+            'new_last_name' => 'Maier',
+            'x_percent' => 55.5,
+            'y_percent' => 20,
+            'status' => PhotoPersonTag::STATUS_APPROVED,
+        ]);
+
+        $response->assertRedirect(route('filament.admin.resources.photos.tags', $photo));
+    }
 }

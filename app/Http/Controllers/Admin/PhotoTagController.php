@@ -48,9 +48,7 @@ class PhotoTagController extends Controller
             ]
         );
 
-        return redirect()
-            ->route('filament.admin.resources.photos.tags', $photo)
-            ->with('success', 'Person wurde markiert.');
+        return $this->redirectToTags($photo, $request)->with('success', 'Person wurde markiert.');
     }
 
     public function update(Request $request, Photo $photo, PhotoPersonTag $tag): RedirectResponse
@@ -70,9 +68,7 @@ class PhotoTagController extends Controller
             'reviewed_by' => $request->user()->id,
         ]);
 
-        return redirect()
-            ->route('filament.admin.resources.photos.tags', $photo)
-            ->with('success', 'Markierung wurde aktualisiert.');
+        return $this->redirectToTags($photo, $request)->with('success', 'Markierung wurde aktualisiert.');
     }
 
     public function destroy(Request $request, Photo $photo, PhotoPersonTag $tag): RedirectResponse
@@ -82,9 +78,21 @@ class PhotoTagController extends Controller
 
         $tag->delete();
 
-        return redirect()
-            ->route('filament.admin.resources.photos.tags', $photo)
-            ->with('success', 'Markierung wurde entfernt.');
+        return $this->redirectToTags($photo, $request)->with('success', 'Markierung wurde entfernt.');
+    }
+
+    /**
+     * The click-to-mark popup submits with a hidden `markmode=1` field so
+     * that, after the redirect, the JS on the tags page can re-activate
+     * "Markiermodus" automatically - letting the admin tag several people
+     * in a row without re-enabling it after every single submit.
+     */
+    private function redirectToTags(Photo $photo, Request $request): RedirectResponse
+    {
+        return redirect()->route('filament.admin.resources.photos.tags', array_filter([
+            'record' => $photo,
+            'markmode' => $request->boolean('markmode') ? 1 : null,
+        ]));
     }
 
     private function authorizeAdmin(Request $request): void
