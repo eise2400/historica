@@ -84,6 +84,26 @@ class BulkUploadPhotosTest extends TestCase
         $this->assertSame(0, Photo::count());
     }
 
+    public function test_bulk_uploaded_oversized_photo_is_scaled_down_too(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $category = Category::factory()->create();
+
+        $response = $this->actingAs($admin)->postJson('/admin/photos/bulk-upload', [
+            'category_id' => $category->id,
+            'images' => [
+                UploadedFile::fake()->image('riesig.jpg', 4000, 3000),
+            ],
+        ]);
+
+        $response->assertOk()->assertJson(['created' => 1]);
+        $photo = Photo::firstOrFail();
+        [$width, $height] = getimagesize(Storage::disk('public')->path($photo->image_path));
+        $this->assertSame(Photo::MAX_IMAGE_DIMENSION, $width);
+        $this->assertSame(1500, $height);
+    }
+
     public function test_bulk_upload_page_renders_for_admin(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
