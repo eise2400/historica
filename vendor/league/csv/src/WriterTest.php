@@ -17,8 +17,6 @@ use ArrayIterator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
-use SplFileObject;
-use SplTempFileObject;
 
 use function array_map;
 use function fclose;
@@ -32,14 +30,14 @@ final class WriterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->csv = Writer::from(new SplTempFileObject());
+        $this->csv = Writer::from(tmpfile());
     }
 
     protected function tearDown(): void
     {
-        $csv = new SplFileObject(__DIR__.'/../test_files/foo.csv', 'w');
-        $csv->setCsvControl(escape: '');
-        $csv->fputcsv(['john', 'doe', 'john.doe@example.com']);
+        /** @var resource $csv */
+        $csv = fopen(__DIR__.'/../test_files/foo.csv', 'w');
+        fputcsv(stream: $csv, fields: ['john', 'doe', 'john.doe@example.com'], escape:'');
         unset($this->csv);
     }
 
@@ -189,10 +187,91 @@ final class WriterTest extends TestCase
 
         self::assertStringContainsString('"1","2"'."\n", $csv);
         self::assertStringContainsString('"value 2-0","value 2-1"'."\n", $csv);
-        self::assertStringContainsString('"to""to","foo\"bar"'."\n", $csv);
+        self::assertStringContainsString('"to""to","foo\""bar"'."\n", $csv);
 
         $writer->necessaryEnclosure();
         self::assertFalse($writer->encloseAll());
+    }
+
+    /**
+     * @param array<string> $record
+     *
+     * @see https://github.com/thephpleague/csv/issues/532
+     */
+    #[DataProvider('forceEnclosureEmptyEscapeProvider')]
+    public function testForceEnclosureWithEmptyEscapeDoublesQuotes(string $expected, array $record): void
+    {
+        $writer = Writer::fromString();
+        $writer->setEscape('');
+        $writer->forceEnclosure();
+        $writer->insertOne($record);
+
+        $csv = $writer->toString();
+        self::assertSame($expected."\n", $csv);
+
+        // the writer must be able to parse back its own output unchanged
+        $reader = Reader::fromString($csv);
+        $reader->setEscape('');
+        self::assertSame([$record], [...$reader->getRecords()]);
+    }
+
+    public static function forceEnclosureEmptyEscapeProvider(): array
+    {
+        return [
+            'embedded enclosure' => [
+                'expected' => '"va""lue","b"',
+                'record' => ['va"lue', 'b'],
+            ],
+            'consecutive enclosures' => [
+                'expected' => '"a""""b","c"',
+                'record' => ['a""b', 'c'],
+            ],
+            'enclosure and delimiter' => [
+                'expected' => '"x""y,z","d"',
+                'record' => ['x"y,z', 'd'],
+            ],
+            'delimiter only' => [
+                'expected' => '"p,q","e"',
+                'record' => ['p,q', 'e'],
+            ],
+            'embedded newline' => [
+                'expected' => "\"li\nne\",\"f\"",
+                'record' => ["li\nne", 'f'],
+            ],
+            'no special char' => [
+                'expected' => '"plain","x"',
+                'record' => ['plain', 'x'],
+            ],
+            'wrapped in enclosures' => [
+                'expected' => '"""wrap""","l"',
+                'record' => ['"wrap"', 'l'],
+            ],
+        ];
+    }
+
+    public function testForceEnclosureWithLegacyEscapeIsUnchanged(): void
+    {
+        $writer = Writer::fromString();
+        $writer->forceEnclosure();
+        $writer->insertOne(['to"to', 'foo\"bar']);
+
+        // the legacy non-empty escape path must keep doubling once, never twice
+        self::assertSame('"to""to","foo\""bar"'."\n", $writer->toString());
+    }
+
+    public function test_security_fix_force_enclosure(): void
+    {
+        $record = ['a"b,INJECTED', 'col2'];
+        $writer = Writer::fromString()
+            ->forceEnclosure();
+
+        $writer->insertOne($record);
+        self::assertSame('"a""b,INJECTED","col2"'."\n", $writer->toString());
+
+        $reader = Reader::fromString($writer->toString())
+            ->setEscape('');
+
+        self::assertSame($record, $reader->first());
     }
 
     public function testAddValidationRules(): void

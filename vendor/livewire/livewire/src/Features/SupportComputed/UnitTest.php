@@ -5,6 +5,7 @@ namespace Livewire\Features\SupportComputed;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestComponent;
 use Tests\TestCase;
+use Livewire\EventBus;
 use Livewire\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
@@ -12,6 +13,15 @@ use Livewire\Features\SupportEvents\BaseOn;
 
 class UnitTest extends TestCase
 {
+    protected function skipUnlessCacheSupportsSerializableClassRestrictions()
+    {
+        $constructor = new \ReflectionMethod(\Illuminate\Cache\ArrayStore::class, '__construct');
+
+        if ($constructor->getNumberOfParameters() < 2) {
+            $this->markTestSkipped('This Laravel version does not support cache serializable class restrictions.');
+        }
+    }
+
     function test_can_make_method_a_computed()
     {
         Livewire::test(new class extends TestComponent {
@@ -94,6 +104,144 @@ class UnitTest extends TestCase
             ->assertSetStrict('count', 2)
             ->call('$refresh')
             ->assertSetStrict('count', 4);
+    }
+
+    function test_cached_computed_property_is_recomputed_when_the_cached_value_cannot_be_unserialized()
+    {
+        $this->skipUnlessCacheSupportsSerializableClassRestrictions();
+
+        config()->set('app.debug', true);
+        config()->set('cache.serializable_classes', false);
+        config()->set('cache.stores.array.serialize', true);
+        Cache::purge('array');
+        Cache::setDefaultDriver('array');
+
+        $component = Livewire::test(new class extends TestComponent {
+            public $count = 0;
+
+            #[Computed(cache: true)]
+            function foo() {
+                $this->count++;
+
+                return (object) ['bar' => 'baz'];
+            }
+
+            function render() {
+                return <<<'HTML'
+                    <div>foo{{ $this->foo->bar }}</div>
+                HTML;
+            }
+        })
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 1);
+
+        $logger = \Mockery::mock(\Psr\Log\LoggerInterface::class);
+        $logger->shouldReceive('warning')
+            ->once()
+            ->withArgs(fn ($message) => str_contains($message, '::foo]')
+                && str_contains($message, '[stdClass]')
+                && str_contains($message, 'was not served from cache'));
+        app()->instance('log', $logger);
+
+        $component->call('$refresh')
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 2);
+    }
+
+    function test_persisted_computed_property_is_recomputed_when_the_cached_value_cannot_be_unserialized()
+    {
+        $this->skipUnlessCacheSupportsSerializableClassRestrictions();
+
+        config()->set('cache.serializable_classes', false);
+        config()->set('cache.stores.array.serialize', true);
+        Cache::purge('array');
+        Cache::setDefaultDriver('array');
+
+        Livewire::test(new class extends TestComponent {
+            public $count = 0;
+
+            #[Computed(persist: true)]
+            function foo() {
+                $this->count++;
+
+                return (object) ['bar' => 'baz'];
+            }
+
+            function render() {
+                return <<<'HTML'
+                    <div>foo{{ $this->foo->bar }}</div>
+                HTML;
+            }
+        })
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 1)
+            ->call('$refresh')
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 2);
+    }
+
+    function test_persisted_computed_property_is_recomputed_when_an_array_it_returns_holds_a_value_that_cannot_be_unserialized()
+    {
+        $this->skipUnlessCacheSupportsSerializableClassRestrictions();
+
+        config()->set('cache.serializable_classes', false);
+        config()->set('cache.stores.array.serialize', true);
+        Cache::purge('array');
+        Cache::setDefaultDriver('array');
+
+        Livewire::test(new class extends TestComponent {
+            public $count = 0;
+
+            #[Computed(persist: true)]
+            function foo() {
+                $this->count++;
+
+                return ['bar' => (object) ['baz' => 'bob']];
+            }
+
+            function render() {
+                return <<<'HTML'
+                    <div>foo{{ $this->foo['bar']->baz }}</div>
+                HTML;
+            }
+        })
+            ->assertSee('foobob')
+            ->assertSetStrict('count', 1)
+            ->call('$refresh')
+            ->assertSee('foobob')
+            ->assertSetStrict('count', 2);
+    }
+
+    function test_cached_computed_property_is_not_recomputed_when_its_class_is_allowed_to_be_unserialized()
+    {
+        $this->skipUnlessCacheSupportsSerializableClassRestrictions();
+
+        config()->set('cache.serializable_classes', [\stdClass::class]);
+        config()->set('cache.stores.array.serialize', true);
+        Cache::purge('array');
+        Cache::setDefaultDriver('array');
+
+        Livewire::test(new class extends TestComponent {
+            public $count = 0;
+
+            #[Computed(cache: true)]
+            function foo() {
+                $this->count++;
+
+                return (object) ['bar' => 'baz'];
+            }
+
+            function render() {
+                return <<<'HTML'
+                    <div>foo{{ $this->foo->bar }}</div>
+                HTML;
+            }
+        })
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 1)
+            ->call('$refresh')
+            ->assertSee('foobaz')
+            ->assertSetStrict('count', 1);
     }
 
     function test_can_tag_cached_computed_property()
@@ -371,6 +519,52 @@ class UnitTest extends TestCase
             ->assertSee('false');
     }
 
+    public function test_computed_attribute_takes_priority_over_legacy_get_property_syntax()
+    {
+        Livewire::test(new class extends TestComponent {
+            use HasLegacyComputedProperty;
+
+            #[Computed]
+            public function foo(): string
+            {
+                return 'computed';
+            }
+        })
+            ->assertSetStrict('foo', 'computed');
+    }
+
+    public function test_computed_attributes_do_not_accumulate_event_bus_listeners()
+    {
+        $countListeners = function () {
+            $eventBus = app(EventBus::class);
+            $reflection = new \ReflectionClass($eventBus);
+            $total = 0;
+
+            foreach (['listeners', 'listenersAfter', 'listenersBefore'] as $propertyName) {
+                $property = $reflection->getProperty($propertyName);
+                $property->setAccessible(true);
+
+                foreach ($property->getValue($eventBus) as $listeners) {
+                    $total += count($listeners);
+                }
+            }
+
+            return $total;
+        };
+
+        Livewire::test(ComputedAttributeMemoryLeakStub::class);
+        Livewire::flushState();
+
+        $baselineListeners = $countListeners();
+
+        for ($i = 0; $i < 20; $i++) {
+            Livewire::test(ComputedAttributeMemoryLeakStub::class);
+            Livewire::flushState();
+        }
+
+        $this->assertEquals($baselineListeners, $countListeners());
+    }
+
     public function test_it_supports_legacy_computed_properties()
     {
         Livewire::test(new class extends TestComponent {
@@ -526,6 +720,34 @@ class FalseIssetComputedPropertyStub extends Component{
             {{ var_dump(isset($this->foo)) }}
         </div>
         HTML;
+    }
+}
+
+trait HasLegacyComputedProperty
+{
+    public function getFooProperty(): string
+    {
+        return 'legacy';
+    }
+}
+
+class ComputedAttributeMemoryLeakStub extends Component
+{
+    #[Computed]
+    public function items(): array
+    {
+        return ['a', 'b', 'c'];
+    }
+
+    #[Computed]
+    public function total(): int
+    {
+        return count($this->items);
+    }
+
+    public function render()
+    {
+        return '<div>{{ $this->total }}</div>';
     }
 }
 

@@ -56,13 +56,6 @@
 @endphp
 
 <div
-    @if ($ariaLabelledby)
-        aria-labelledby="{{ $ariaLabelledby }}"
-    @elseif ($heading)
-        aria-labelledby="{{ "{$id}.heading" }}"
-    @endif
-    aria-modal="true"
-    role="dialog"
     x-data="{
         isOpen: false,
 
@@ -71,7 +64,7 @@
         close: function () {
             this.isOpen = false
 
-            if (! this.$refs.modalContainer.isConnected) {
+            if (! this.$refs.modalContainer?.isConnected) {
                 return
             }
 
@@ -82,6 +75,10 @@
 
         open: function () {
             this.$nextTick(() => {
+                if (! this.$refs.modalContainer?.isConnected) {
+                    return
+                }
+
                 this.isOpen = true
 
                 @if (FilamentView::hasSpaMode())
@@ -120,7 +117,17 @@
         </div>
     @endif
 
-    <div x-cloak x-show="isOpen">
+    <div
+        @if ($ariaLabelledby)
+            aria-labelledby="{{ $ariaLabelledby }}"
+        @elseif ($heading)
+            aria-labelledby="{{ "{$id}.heading" }}"
+        @endif
+        aria-modal="true"
+        role="dialog"
+        x-cloak
+        x-show="isOpen"
+    >
         <div
             aria-hidden="true"
             x-show="isOpen"

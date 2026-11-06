@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "?.x"
+      - "renovate/*"
+
+env:
+  INI_VALUES: zend.assertions=1,error_reporting=-1
+  EXTENSIONS: dom,fileinfo,xmlreader,zip
+
+jobs:
+  composer-json-lint:
+    name: "Lint composer.json"
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        php-version:
+          - "8.3"
+
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          php-version: "${{ matrix.php-version }}"
+          extensions: "${{ env.EXTENSIONS }}"
+          ini-values: "${{ env.INI_VALUES }}"
+          tools: composer-normalize, composer-require-checker, composer-unused
+      - uses: "ramsey/composer-install@v3"
+
+      - run: "composer validate --strict"
+      - run: "composer-normalize --dry-run"
+      - run: "composer-require-checker check --config-file=$(realpath .require-checker-config.json)"
+      - run: "composer-unused"
+
+  tests:
+    name: "Tests"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        os:
+          - "ubuntu-latest"
+        php-version:
+          - "8.3"
+        code-coverage:
+          - "none"
+        include:
+            - os: "windows-latest"
+              php-version: "8.3"
+              code-coverage: "none"
+            - os: "ubuntu-latest"
+              php-version: "8.4"
+              code-coverage: "pcov"
+            - os: "ubuntu-latest"
+              php-version: "8.5"
+              code-coverage: "none"
+
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "${{ matrix.code-coverage }}"
+          php-version: "${{ matrix.php-version }}"
+          extensions: "${{ env.EXTENSIONS }}"
+          ini-values: "${{ env.INI_VALUES }}"
+      - uses: "ramsey/composer-install@v3"
+
+      - name: "Run tests without CC"
+        if: "${{matrix.code-coverage == 'none' }}"
+        timeout-minutes: 3
+        run: "vendor/bin/phpunit --no-coverage --no-logging"
+
+      - name: "Run tests"
+        if: "${{matrix.code-coverage != 'none' }}"
+        timeout-minutes: 3
+        run: "vendor/bin/phpunit"
+
+      - name: "Gather base branch for diff"
+        if: "${{ github.event_name == 'pull_request' && matrix.code-coverage != 'none' }}"
+        run: "git fetch origin --no-tags --prune --depth=1 ${{ github.base_ref }} ${{ github.event.pull_request.base.sha }}"
+
+      - name: "Infection on DIFF"
+        if: "${{ github.event_name == 'pull_request' && matrix.code-coverage != 'none' }}"
+        continue-on-error: true
+        timeout-minutes: 10
+        run: "vendor/bin/infection --ansi --threads=$(nproc) --skip-initial-tests --coverage=coverage --git-diff-lines --git-diff-base=origin/${{ github.base_ref }} --show-mutations --verbose --ignore-msi-with-no-mutations --min-msi=100"
+        env:
+          INFECTION_BADGE_API_KEY: "${{ secrets.INFECTION_BADGE_API_KEY }}"
+
+      - name: "Infection on complete code base"
+        if: "${{ github.event_name != 'pull_request' && matrix.code-coverage != 'none' }}"
+        continue-on-error: true
+        timeout-minutes: 10
+        run: "vendor/bin/infection --ansi --threads=$(nproc) --skip-initial-tests --coverage=coverage"
+        env:
+          INFECTION_BADGE_API_KEY: "${{ secrets.INFECTION_BADGE_API_KEY }}"
+
+  coding-standards:
+    name: "Coding Standards"
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        php-version:
+          - "8.3"
+
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          php-version: "${{ matrix.php-version }}"
+          extensions: "${{ env.EXTENSIONS }}"
+          ini-values: "${{ env.INI_VALUES }}"
+      - uses: "ramsey/composer-install@v3"
+
+      - run: "vendor/bin/php-cs-fixer fix --verbose --dry-run --diff"
+
+  static-analysis:
+    name: "Static Analysis"
+
+    runs-on: "ubuntu-latest"
+
+    strategy:
+      matrix:
+        php-version:
+          - "8.3"
+
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          php-version: "${{ matrix.php-version }}"
+          extensions: "${{ env.EXTENSIONS }}"
+          ini-values: "${{ env.INI_VALUES }}"
+      - uses: "ramsey/composer-install@v3"
+
+      - run: "vendor/bin/phpstan analyse --no-progress --error-format=github"
+
+  benchmarks:
+    name: "Benchmarks"
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        php-version:
+          - "8.3"
+        bench:
+          - "CsvReaderBench"
+          - "CsvWriterBench"
+          - "OdsReaderBench"
+          - "OdsWriterBench"
+          - "XlsxReaderInlineBench"
+          - "XlsxReaderSharedBench"
+          - "XlsxWriterInlineBench"
+          - "XlsxWriterSharedBench"
+
+    steps:
+      - uses: "actions/checkout@v5"
+      - uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          php-version: "${{ matrix.php-version }}"
+          extensions: "${{ env.EXTENSIONS }}"
+          ini-values: "${{ env.INI_VALUES }}"
+      - uses: "ramsey/composer-install@v3"
+
+      - name: "Remove infection"
+        run: "composer remove --no-progress --no-update --no-scripts --dev 'infection/infection'"
+
+      - run: "vendor/bin/phpbench run --report=default --filter ${{ matrix.bench }}"
+        timeout-minutes: 3

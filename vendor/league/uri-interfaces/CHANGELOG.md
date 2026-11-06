@@ -2,7 +2,68 @@
 
 All Notable changes to `League\Uri\Interfaces` will be documented in this file
 
-## [Next](https://github.com/thephpleague/uri-interfaces/compare/7.8.0...master) - TBD
+## [7.10.0](https://github.com/thephpleague/uri-interfaces/compare/7.9.1...7.10.0) - 2026-11-04
+
+### Added
+
+- `HostRecord::encoded`
+
+### Fixed
+
+- `Encoder::normalizeHost` Host encoding and normalization [#230](https://github.com/thephpleague/uri-src/issues/230)
+- `HostRecord` Host validation and Unicode/Ascii convertion [#230](https://github.com/thephpleague/uri-src/issues/230)
+- `Encoder::isQueryEncoded` Should follow the rules from RFC3986  [#229](https://github.com/thephpleague/uri-src/issues/229)
+
+### Deprecated
+
+- None
+
+### Removed
+
+- None
+
+## [7.9.1](https://github.com/thephpleague/uri-interfaces/compare/7.9.0...7.9.1) - 2026-10-27
+
+### Added 
+
+- None
+
+### Fixed
+
+- Reject URI ports that overflow PHP_INT_MAX instead of clamping them [#227](https://github.com/thephpleague/uri-src/pull/228) by [wleeaf](https://github.com/wleeaf)
+- `Encoder::normalizeHost` Lowercase percent-decoded letters when normalizing the host [#227](https://github.com/thephpleague/uri-src/pull/227) by [wleeaf](https://github.com/wleeaf)
+- Drop the base URI fragment when resolving an empty reference [#226](https://github.com/thephpleague/uri-src/pull/226) by [wleeaf](https://github.com/wleeaf)
+- Fix data URI with only ;base64 parameter being rejected [#225](https://github.com/thephpleague/uri-src/pull/225) by [ViniTou](https://github.com/ViniTou)
+
+### Deprecated
+
+- None
+
+### Removed
+
+- None
+
+## [7.9.0](https://github.com/thephpleague/uri-interfaces/compare/7.8.1...7.9.0) - 2026-10-16
+
+### Added
+
+- `HostRecord::parse` returns a new `HostRecord` or `null` complements `HostRecord::from`
+
+### Fixed
+
+- `Encoder` URI component encoding [#191](https://github.com/thephpleague/uri-src/pull/191)
+- Preserve the root when removeDotSegments pops past it (RFC 3986 §5.2.4) [#190](https://github.com/thephpleague/uri-src/pull/190)
+- `UriString` URI normalization algorithm to be inline with PHP's Uri extension
+
+### Deprecated
+
+- None
+
+### Removed
+
+- None
+
+## [7.8.1](https://github.com/thephpleague/uri-interfaces/compare/7.8.0...7.8.1) - 2026-03-16
 
 ### Added
 
@@ -12,6 +73,7 @@ All Notable changes to `League\Uri\Interfaces` will be documented in this file
 
 - `Host::isIp` is fixed to be more strict.
 - `UriString::resolve` regression from previous minor version fixed see issue [#184](https://github.com/thephpleague/uri-src/issues/184)
+- `IPv6\Converter::normalize` to handle IPv6 normalization [#22618](https://github.com/php/php-src/issues/22618)
 
 ### Deprecated
 

@@ -1,0 +1,150 @@
+<?php declare(strict_types=1);
+
+use Nette\Schema\{Expect, Processor};
+use Tester\Assert;
+
+require __DIR__ . '/../bootstrap.php';
+
+
+test('built-in', function () {
+	$schema = Expect::int()->castTo('string');
+	Assert::same('10', (new Processor)->process($schema, 10));
+
+	$schema = Expect::string()->castTo('array');
+	Assert::same(['foo'], (new Processor)->process($schema, 'foo'));
+});
+
+
+test('simple object', function () {
+	class Foo1
+	{
+		public mixed $a;
+		public mixed $b;
+	}
+
+	$foo = new Foo1;
+	$foo->a = 1;
+	$foo->b = 2;
+
+	$schema = Expect::array()->castTo(Foo1::class);
+	Assert::equal(
+		$foo,
+		(new Processor)->process($schema, ['a' => 1, 'b' => 2]),
+	);
+});
+
+
+test('object with constructor', function () {
+	class Foo2
+	{
+		public function __construct(
+			private int $a,
+			private int $b,
+		) {
+		}
+	}
+
+	$schema = Expect::array()->castTo(Foo2::class);
+	Assert::equal(
+		new Foo2(1, 2),
+		(new Processor)->process($schema, ['b' => 2, 'a' => 1]),
+	);
+});
+
+
+test('constructor mismatch reports target class', function () {
+	$schema = Expect::array()->castTo(Foo2::class);
+
+	Assert::exception(
+		fn() => (new Processor)->process($schema, ['c' => 1]),
+		Nette\InvalidStateException::class,
+		'Unable to cast value to Foo2: %a%',
+	);
+});
+
+
+test('property mismatch reports target class', function () {
+	class Foo3
+	{
+		public int $a;
+	}
+
+	$schema = Expect::array()->castTo(Foo3::class);
+
+	Assert::exception(
+		fn() => (new Processor)->process($schema, ['a' => 'text']),
+		Nette\InvalidStateException::class,
+		'Unable to cast value to Foo3: %a%',
+	);
+});
+
+
+test('DateTime', function () {
+	$schema = Expect::string()->castTo(DateTime::class);
+	Assert::equal(
+		new DateTime('2021-01-01'),
+		(new Processor)->process($schema, '2021-01-01'),
+	);
+});
+
+
+enum CastSuit: string
+{
+	case Clubs = 'clubs';
+	case Hearts = 'hearts';
+}
+
+enum CastLevel: int
+{
+	case Low = 1;
+	case High = 2;
+}
+
+enum CastPure
+{
+	case One;
+}
+
+test('backed enum', function () {
+	$schema = Expect::string()->castTo(CastSuit::class);
+	Assert::same(CastSuit::Clubs, (new Processor)->process($schema, 'clubs'));
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, 'diamonds');
+	}, ["The item expects to be 'clubs'|'hearts', 'diamonds' given."]);
+
+	$schema = Expect::int()->castTo(CastLevel::class);
+	Assert::same(CastLevel::High, (new Processor)->process($schema, 2));
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, 3);
+	}, ['The item expects to be 1|2, 3 given.']);
+});
+
+
+test('null', function () {
+	$processor = new Processor;
+
+	// a built-in type casts null as PHP does, ?type keeps it
+	Assert::same('', $processor->process(Expect::string()->nullable()->castTo('string'), null));
+	Assert::same([], $processor->process(Expect::mixed()->castTo('array'), null));
+	Assert::null($processor->process(Expect::string()->nullable()->castTo('?string'), null));
+	Assert::same('10', $processor->process(Expect::int()->nullable()->castTo('?string'), 10));
+
+	// there is no cast of null to a class or an enum, so it stays null, with or without ?
+	Assert::null($processor->process(Expect::string()->nullable()->castTo(DateTime::class), null));
+	Assert::null($processor->process(Expect::array()->nullable()->castTo(Foo1::class), null));
+	Assert::null($processor->process(Expect::array()->nullable()->castTo(Foo2::class), null));
+	Assert::null($processor->process(Expect::string()->nullable()->castTo(CastSuit::class), null));
+	Assert::null($processor->process(Expect::string()->nullable()->castTo('?' . CastSuit::class), null));
+	Assert::same(CastSuit::Hearts, $processor->process(Expect::string()->nullable()->castTo('?' . CastSuit::class), 'hearts'));
+	Assert::equal(new DateTime('2021-01-01'), $processor->process(Expect::string()->castTo('?DateTime'), '2021-01-01'));
+});
+
+
+testException(
+	'pure enum cannot be a cast target',
+	fn() => Expect::string()->castTo(CastPure::class),
+	Nette\InvalidStateException::class,
+	'Cannot cast value to pure enum CastPure.',
+);

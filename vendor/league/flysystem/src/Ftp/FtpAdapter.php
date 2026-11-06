@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace League\Flysystem\Ftp;
 
 use DateTime;
+use DateTimeInterface;
 use Generator;
 use League\Flysystem\Config;
 use League\Flysystem\DirectoryAttributes;
@@ -87,7 +88,15 @@ class FtpAdapter implements FilesystemAdapter
         start:
         if ( ! $this->hasFtpConnection()) {
             $this->connection = $this->connectionProvider->createConnection($this->connectionOptions);
-            $this->rootDirectory = $this->resolveConnectionRoot($this->connection);
+
+            try {
+                $this->rootDirectory = $this->resolveConnectionRoot($this->connection);
+            } catch (Throwable $e) {
+                $this->connection = false;
+                $this->rootDirectory = null;
+                throw $e;
+            }
+
             $this->prefixer = new PathPrefixer($this->rootDirectory);
 
             return $this->connection;
@@ -460,18 +469,28 @@ class FtpAdapter implements FilesystemAdapter
         return str_starts_with($permissions, 'd');
     }
 
-    private function normalizeUnixTimestamp(string $month, string $day, string $timeOrYear): int
+    private function normalizeUnixTimestamp(string $month, string $day, string $timeOrYear, ?DateTimeInterface $now = null): int
     {
+        $now ??= new DateTime();
+
         if (is_numeric($timeOrYear)) {
             $year = $timeOrYear;
             $hour = '00';
             $minute = '00';
+            $yearIsAssumed = false;
         } else {
-            $year = date('Y');
+            $year = $now->format('Y');
             [$hour, $minute] = explode(':', $timeOrYear);
+            $yearIsAssumed = true;
         }
 
         $dateTime = DateTime::createFromFormat('Y-M-j-G:i:s', "$year-$month-$day-$hour:$minute:00");
+
+        // Unix `ls`-style listings omit the year for recent entries, so we assume the current
+        // year. If that puts the date in the future, it actually belongs to last year.
+        if ($yearIsAssumed && $dateTime !== false && $dateTime > $now) {
+            $dateTime->modify('-1 year');
+        }
 
         return $dateTime->getTimestamp();
     }

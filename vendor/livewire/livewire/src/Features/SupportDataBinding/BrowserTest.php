@@ -9,6 +9,26 @@ use Livewire\Attributes\Computed;
 
 class BrowserTest extends BrowserTestCase
 {
+    function test_wire_properties_can_share_names_with_object_prototype_keys()
+    {
+        Livewire::visit(new class extends Component {
+            public $constructor = 'constructor value';
+            public $toString = 'string value';
+
+            public function render()
+            {
+                return <<<'BLADE'
+                    <div>
+                        <span dusk="constructor" x-text="$wire.constructor"></span>
+                        <span dusk="to-string" x-text="$wire.toString"></span>
+                    </div>
+                BLADE;
+            }
+        })
+            ->assertSeeIn('@constructor', 'constructor value')
+            ->assertSeeIn('@to-string', 'string value');
+    }
+
     function test_can_use_wire_dirty()
     {
         Livewire::visit(new class extends Component {
@@ -33,6 +53,39 @@ class BrowserTest extends BrowserTestCase
             ->uncheck('@checkbox')
             ->assertSee('The data is in-sync...')
             ->assertDontSee('Unsaved changes...')
+        ;
+    }
+
+    function test_wire_dirty_keeps_tracking_every_target_after_a_commit()
+    {
+        Livewire::visit(new class extends Component {
+            public $first = false;
+
+            public $second = '';
+
+            public function render()
+            {
+                return <<<'BLADE'
+                    <div>
+                        <input dusk="first" type="checkbox" wire:model="first" />
+                        <input dusk="second" type="text" wire:model="second" />
+
+                        <button dusk="commit" type="button" wire:click="$commit">Commit</button>
+
+                        <div dusk="dirty" wire:dirty.class="dirty" wire:target="first, second"></div>
+                    </div>
+                BLADE;
+            }
+        })
+            ->assertAttributeDoesntContain('@dirty', 'class', 'dirty')
+            ->check('@first')
+            ->pause(50)
+            ->assertAttributeContains('@dirty', 'class', 'dirty')
+            ->waitForLivewire()->click('@commit')
+            ->waitUntil("!document.querySelector('[dusk=\"dirty\"]').classList.contains('dirty')")
+            ->type('@second', 'Later target')
+            ->pause(50)
+            ->assertAttributeContains('@dirty', 'class', 'dirty')
         ;
     }
 
@@ -277,6 +330,29 @@ class BrowserTest extends BrowserTestCase
         ;
     }
 
+    public function test_x_mask_does_not_recreate_a_cleared_alpine_model()
+    {
+        Livewire::visit(new class extends Component {
+            public function render()
+            {
+                return <<<'BLADE'
+                    <div x-data="{ form: { amount: '5000' } }">
+                        <input x-model="form.amount" x-mask:dynamic="$money($input)" dusk="amount" />
+
+                        <span dusk="model-state" x-text="'amount' in form ? 'EXISTS' : 'GONE'"></span>
+
+                        <button x-on:click="form = {}" dusk="clear">Clear</button>
+                    </div>
+                BLADE;
+            }
+        })
+            ->assertInputValue('@amount', '5,000')
+            ->assertSeeIn('@model-state', 'EXISTS')
+            ->click('@clear')
+            ->assertSeeIn('@model-state', 'GONE')
+        ;
+    }
+
     public function test_blur_modifier_does_not_recreate_deleted_array_entries_when_submitting_with_enter()
     {
         Livewire::visit(new class extends Component {
@@ -311,5 +387,30 @@ class BrowserTest extends BrowserTestCase
             ->assertSeeIn('@item-count', '0')
             ->assertMissing('@name')
         ;
+    }
+
+    function test_queued_set_does_not_drop_updates_to_properties_that_share_its_prefix()
+    {
+        Livewire::visit(new class extends Component {
+            public $foo = '';
+
+            public $foobar = '';
+
+            public function render()
+            {
+                return <<<'BLADE'
+                    <div>
+                        <input dusk="foobar" wire:model="foobar" />
+
+                        <button dusk="set" wire:click="$set('foo', 'bar')">Set foo</button>
+
+                        <span dusk="output">{{ $foo }}-{{ $foobar }}</span>
+                    </div>
+                BLADE;
+            }
+        })
+            ->type('@foobar', 'baz')
+            ->waitForLivewire()->click('@set')
+            ->assertSeeIn('@output', 'bar-baz');
     }
 }

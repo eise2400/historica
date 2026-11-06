@@ -17,7 +17,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\Attributes\Group;
 use SplFileObject;
-use SplTempFileObject;
 
 use function array_keys;
 use function count;
@@ -25,6 +24,7 @@ use function fclose;
 use function fopen;
 use function fputcsv;
 use function json_encode;
+use function tmpfile;
 use function unlink;
 
 #[Group('reader')]
@@ -38,10 +38,9 @@ final class ReaderTest extends TabularDataReaderTestCase
 
     protected function setUp(): void
     {
-        $tmp = new SplTempFileObject();
-        $tmp->setCsvControl(escape: '\\');
+        $tmp = tmpfile();
         foreach ($this->expected as $row) {
-            $tmp->fputcsv($row, escape: '\\');
+            fputcsv(stream: $tmp, fields: $row, escape: '\\');
         }
 
         $this->csv = Reader::from($tmp);
@@ -157,10 +156,9 @@ EOF;
             ['clarck', 'kent'],
         ];
 
-        $file = new SplTempFileObject();
-        $file->setCsvControl(escape: '\\');
+        $file = tmpfile();
         foreach ($raw as $row) {
-            $file->fputcsv($row, escape: '\\');
+            fputcsv($file, $row, escape: '\\');
         }
         $csv = Reader::from($file);
         $csv->setHeaderOffset(0);
@@ -184,7 +182,7 @@ EOF;
 
         $this->expectExceptionObject(SyntaxError::dueToDuplicateHeaderColumnNames(['field1']));
 
-        [...$csv];
+        $res = [...$csv];
     }
 
     public function testHeaderThrowsExceptionOnEmptyLine(): void
@@ -317,6 +315,20 @@ EOF;
         ];
     }
 
+    public function testIncludingEmptyRecordsDoesNotAddARecordAtTheEndOfAFileObject(): void
+    {
+        $path = __DIR__.'/../test_files/tmp.txt';
+        $obj  = new SplFileObject($path, 'w+');
+        $obj->fwrite("1st\n\n2nd\n");
+        $reader = Reader::from($obj)->includeEmptyRecords();
+        self::assertCount(3, $reader);
+        self::assertSame([['1st'], [], ['2nd']], [...$reader]);
+        self::assertSame([['1st'], [], ['2nd']], [...$reader->includeInputBOM()]);
+        $reader = null;
+        $obj = null;
+        unlink($path);
+    }
+
     public function testGetHeaderThrowsExceptionWithNegativeOffset(): void
     {
         $this->expectException(InvalidArgument::class);
@@ -365,10 +377,9 @@ EOF;
             ['jane', 'doe', 'jane.doe@example.com'],
         ];
 
-        $tmp = new SplTempFileObject();
-        $tmp->setCsvControl(escape: '\\');
+        $tmp = tmpfile();
         foreach ($expected as $row) {
-            $tmp->fputcsv($row, escape: '\\');
+            fputcsv($tmp, $row, escape: '\\');
         }
 
         $reader = Reader::from($tmp)->setHeaderOffset(0);
@@ -450,8 +461,8 @@ EOF;
             3 => ['parent name' => 'parentA', 'child name' => 'childA', 'title' => 'titleA'],
         ];
 
-        $rsrc = new SplTempFileObject();
-        $rsrc->fwrite($source);
+        $rsrc = tmpfile();
+        fwrite($rsrc, $source);
 
         return [
             'FileObject' => [
@@ -557,14 +568,14 @@ CSV;
 
     public function testOrderBy(): void
     {
-        $calculated = $this->csv->sorted(fn (array $rowA, array $rowB): int => strcmp($rowA[0], $rowB[0])); /* @phpstan-ignore-line */
+        $calculated = $this->csv->sorted(fn (array $rowA, array $rowB): int => strcmp((string) $rowA[0], (string) $rowB[0])); /* @phpstan-ignore-line */
 
         self::assertSame(array_reverse($this->expected), array_values([...$calculated]));
     }
 
     public function testOrderByWithEquity(): void
     {
-        $calculated = $this->csv->sorted(fn (array $rowA, array $rowB): int => strlen($rowA[0]) <=> strlen($rowB[0])); /* @phpstan-ignore-line */
+        $calculated = $this->csv->sorted(fn (array $rowA, array $rowB): int => strlen((string) $rowA[0]) <=> strlen((string) $rowB[0]));  /* @phpstan-ignore-line */
 
         self::assertSame($this->expected, array_values([...$calculated]));
     }
@@ -651,5 +662,27 @@ CSV;
 
         // An explicitly closed file handle makes the stream filter resources invalid
         fclose($fp);
+    }
+
+    public function test_handline_bom_expression_in_records_issue_586(): void
+    {
+        $bom = Bom::Utf8->value;
+        $contents = [
+            '"a,b",c' => ['a,b', 'c'],
+            '"a'."\n".'b",c' => ['a'."\n".'b', 'c'],
+        ];
+
+        foreach ($contents as $content => $expected) {
+            self::assertSame($expected, Reader::fromString($content)->first());
+            self::assertSame($expected, Reader::fromString($bom.$content)->first());
+        }
+    }
+
+    public function test_handline_bom_expression_in_heasders_issue_586(): void
+    {
+        $csv = Reader::fromString(Bom::Utf8->value.'"a,b",c'."\n".'1,2');
+        $csv->setHeaderOffset(0);
+
+        self::assertSame(['a,b', 'c'], $csv->getHeader());
     }
 }

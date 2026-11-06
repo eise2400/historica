@@ -1,0 +1,229 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\Finder\Tests;
+
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\Glob;
+
+class GlobTest extends TestCase
+{
+    public function testGlobToRegexDelimiters()
+    {
+        $this->assertEquals('#^(?=[^\.])\#$#', Glob::toRegex('#'));
+        $this->assertEquals('#^\.[^/]*$#', Glob::toRegex('.*'));
+        $this->assertEquals('^\.[^/]*$', Glob::toRegex('.*', true, true, ''));
+        $this->assertEquals('/^\.[^/]*$/', Glob::toRegex('.*', true, true, '/'));
+    }
+
+    public function testGlobToRegexBracketExpressions()
+    {
+        $regex = Glob::toRegex('a[*?]');
+
+        $this->assertSame(1, preg_match($regex, 'a*'));
+        $this->assertSame(1, preg_match($regex, 'a?'));
+        $this->assertSame(0, preg_match($regex, 'ab'));
+        $this->assertSame(0, preg_match($regex, 'a]'));
+
+        $regex = Glob::toRegex('[a\-c]');
+
+        $this->assertSame(1, preg_match($regex, '-'));
+        $this->assertSame(1, preg_match($regex, 'c'));
+        $this->assertSame(0, preg_match($regex, 'b'));
+
+        $this->assertSame('#^(?=[^\.])file[0-9]\.txt$#', Glob::toRegex('file[0-9].txt'));
+        $this->assertSame('#^(?=[^\.])[[:alpha:]]$#', Glob::toRegex('[[:alpha:]]'));
+    }
+
+    public function testGlobToRegexDoubleStarStrictDots()
+    {
+        $finder = new Finder();
+        $finder->ignoreDotFiles(false);
+        $regex = Glob::toRegex('/**/*.neon');
+
+        foreach ($finder->in(__DIR__) as $k => $v) {
+            $k = str_replace(\DIRECTORY_SEPARATOR, '/', $k);
+            if (preg_match($regex, substr($k, \strlen(__DIR__)))) {
+                $match[] = substr($k, 10 + \strlen(__DIR__));
+            }
+        }
+        sort($match);
+
+        $this->assertSame(['one/b/c.neon', 'one/b/d.neon'], $match);
+    }
+
+    public function testGlobToRegexDoubleStarNonStrictDots()
+    {
+        $finder = new Finder();
+        $finder->ignoreDotFiles(false);
+        $regex = Glob::toRegex('/**/*.neon', false);
+
+        foreach ($finder->in(__DIR__) as $k => $v) {
+            $k = str_replace(\DIRECTORY_SEPARATOR, '/', $k);
+            if (preg_match($regex, substr($k, \strlen(__DIR__)))) {
+                $match[] = substr($k, 10 + \strlen(__DIR__));
+            }
+        }
+        sort($match);
+
+        $this->assertSame(['.dot/b/c.neon', '.dot/b/d.neon', 'one/b/c.neon', 'one/b/d.neon'], $match);
+    }
+
+    public function testGlobToRegexDoubleStarWithoutLeadingSlash()
+    {
+        $finder = new Finder();
+        $finder->ignoreDotFiles(false);
+        $regex = Glob::toRegex('/Fixtures/one/**');
+
+        foreach ($finder->in(__DIR__) as $k => $v) {
+            $k = str_replace(\DIRECTORY_SEPARATOR, '/', $k);
+            if (preg_match($regex, substr($k, \strlen(__DIR__)))) {
+                $match[] = substr($k, 10 + \strlen(__DIR__));
+            }
+        }
+        sort($match);
+
+        $this->assertSame(['one/a', 'one/b', 'one/b/c.neon', 'one/b/d.neon'], $match);
+    }
+
+    public function testGlobToRegexDoubleStarWithoutLeadingSlashNotStrictLeadingDot()
+    {
+        $finder = new Finder();
+        $finder->ignoreDotFiles(false);
+        $regex = Glob::toRegex('/Fixtures/one/**', false);
+
+        foreach ($finder->in(__DIR__) as $k => $v) {
+            $k = str_replace(\DIRECTORY_SEPARATOR, '/', $k);
+            if (preg_match($regex, substr($k, \strlen(__DIR__)))) {
+                $match[] = substr($k, 10 + \strlen(__DIR__));
+            }
+        }
+        sort($match);
+
+        $this->assertSame(['one/.dot', 'one/a', 'one/b', 'one/b/c.neon', 'one/b/d.neon'], $match);
+    }
+
+    public function testGlobToRegexDoubleStarMatchesRootFiles()
+    {
+        $regex = Glob::toRegex('**/*.txt');
+
+        $this->assertSame(1, preg_match($regex, 'file.txt'));
+        $this->assertSame(1, preg_match($regex, 'foo/file.txt'));
+        $this->assertSame(1, preg_match($regex, 'foo/bar/baz.txt'));
+        $this->assertSame(1, preg_match($regex, '/foo/bar.txt'));
+        $this->assertSame(0, preg_match($regex, './foo/bar.txt'));
+        $this->assertSame(0, preg_match($regex, 'foo/.bar/bar.txt'));
+        $this->assertSame(0, preg_match($regex, '.file.txt'));
+        $this->assertSame(0, preg_match($regex, 'foo/bar/baz.php'));
+
+        $regex = Glob::toRegex('**/*.txt', false);
+
+        $this->assertSame(1, preg_match($regex, './foo/bar.txt'));
+        $this->assertSame(1, preg_match($regex, 'foo/.bar/bar.txt'));
+        $this->assertSame(1, preg_match($regex, '.file.txt'));
+    }
+
+    public function testGlobToRegexMergesConsecutiveStarsWhenWildcardsCrossSlashes()
+    {
+        $this->assertSame('#^(?=[^\.])/?(?=[^\.]).*/(?=[^\.])controllers\.json$#', Glob::toRegex('**/controllers.json', true, false));
+        $this->assertSame('#^(?=[^\.])foo/(?=[^\.]).*/(?=[^\.])bar$#', Glob::toRegex('foo/**/bar', true, false));
+        $this->assertSame('#^(?=[^\.]).*$#', Glob::toRegex('**', true, false));
+        $this->assertSame('#^(?=[^\.])a\*.*$#', Glob::toRegex('a\**', true, false));
+    }
+
+    public function testGlobToRegexEscapedBrackets()
+    {
+        $regex = Glob::toRegex('file\[1\].txt');
+
+        $this->assertSame('#^(?=[^\.])file\[1\]\.txt$#', $regex);
+        $this->assertSame(1, preg_match($regex, 'file[1].txt'));
+        $this->assertSame(0, preg_match($regex, 'file1.txt'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('a\[b'), 'a[b'));
+        $this->assertSame(1, preg_match(Glob::toRegex('file[0-9].txt'), 'file1.txt'));
+
+        $regex = Glob::toRegex('[a\]]');
+
+        $this->assertSame(1, preg_match($regex, ']'));
+        $this->assertSame(0, preg_match($regex, 'a]'));
+    }
+
+    public function testGlobToRegexUnclosedBrackets()
+    {
+        $this->assertSame('#^(?=[^\.])a\[b$#', Glob::toRegex('a[b'));
+        $this->assertSame('#^(?=[^\.])\[]$#', Glob::toRegex('[]'));
+        $this->assertSame('#^(?=[^\.])\[a\]$#', Glob::toRegex('[a\]'));
+        $this->assertSame('#^(?=[^\.])\[a\[b$#', Glob::toRegex('[a[b'));
+        $this->assertSame('#^(?=[^\.])\[[^/]*\.txt$#', Glob::toRegex('[*.txt'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('a[b'), 'a[b'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[]'), '[]'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[*.txt'), '[foo.txt'));
+        $this->assertSame(0, preg_match(Glob::toRegex('[*.txt'), '^.txt'));
+
+        $this->assertSame('#^(?=[^\.])[]]$#', Glob::toRegex('[]]'));
+        $this->assertSame('#^(?=[^\.])[a[]$#', Glob::toRegex('[a[]'));
+    }
+
+    public function testGlobToRegexBracketWithSlash()
+    {
+        $this->assertSame(1, preg_match(Glob::toRegex('a[/]b'), 'a[/]b'));
+        $this->assertSame(0, preg_match(Glob::toRegex('a[/]b'), 'a/b'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[/]'), '[/]'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[a/b]'), '[a/b]'));
+        $this->assertSame(1, preg_match(Glob::toRegex('x[y/z]w'), 'x[y/z]w'));
+        $this->assertSame(0, preg_match(Glob::toRegex('x[y/z]w'), 'xzw'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[a[/]'), '[a[/]'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('[a/b][c]'), '[a/b]c'));
+        $this->assertSame(0, preg_match(Glob::toRegex('[a/b][c]'), '[a/b]d'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('[*/]x'), '[foo/]x'));
+        $this->assertSame(0, preg_match(Glob::toRegex('[*/]x'), '[foo/bar/]x'));
+    }
+
+    public function testGlobToRegexBracketsAfterAnUnclosedOne()
+    {
+        $this->assertSame('#^(?=[^\.])\[\[:alpha:]$#', Glob::toRegex('[[:alpha:]'));
+        $this->assertSame(1, preg_match(Glob::toRegex('[[:alpha:]'), '[[:alpha:]'));
+    }
+
+    public function testGlobToRegexUnclosedCurlies()
+    {
+        $this->assertSame('#^(?=[^\.])a\{b$#', Glob::toRegex('a{b'));
+        $this->assertSame('#^(?=[^\.])\{a,b$#', Glob::toRegex('{a,b'));
+        $this->assertSame('#^(?=[^\.])\{a,(b|c)$#', Glob::toRegex('{a,{b,c}'));
+        $this->assertSame('#^(?=[^\.])\{a(b|c)$#', Glob::toRegex('{a{b,c}'));
+        $this->assertSame('#^(?=[^\.])\{(a)$#', Glob::toRegex('{{a}'));
+        $this->assertSame('#^(?=[^\.])\{[^/]*$#', Glob::toRegex('{*'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('a{b'), 'a{b'));
+        $this->assertSame(1, preg_match(Glob::toRegex('{a,{b,c}'), '{a,c'));
+
+        $this->assertSame('#^(?=[^\.])(a|b)}$#', Glob::toRegex('{a,b}}'));
+        $this->assertSame('#^(?=[^\.])a,b$#', Glob::toRegex('a,b'));
+    }
+
+    public function testGlobToRegexCurliesInsideBrackets()
+    {
+        $this->assertSame('#^(?=[^\.])[{]$#', Glob::toRegex('[{]'));
+        $this->assertSame('#^(?=[^\.])[{}]$#', Glob::toRegex('[{}]'));
+        $this->assertSame('#^(?=[^\.])(a|[{])$#', Glob::toRegex('{a,[{]}'));
+        $this->assertSame('#^(?=[^\.])([a{]a)$#', Glob::toRegex('{[a{]a}'));
+        $this->assertSame('#^(?=[^\.])(a|[,])$#', Glob::toRegex('{a,[,]}'));
+        $this->assertSame('#^(?=[^\.])(a|\[b)$#', Glob::toRegex('{a,[b}'));
+
+        $this->assertSame(1, preg_match(Glob::toRegex('[{}]'), '}'));
+        $this->assertSame(0, preg_match(Glob::toRegex('[{}]'), '('));
+        $this->assertSame(1, preg_match(Glob::toRegex('[{-}]'), '|'));
+    }
+}

@@ -2,6 +2,49 @@
 
 All Notable changes to `Csv` will be documented in this file
 
+## [9.29.0](https://github.com/thephpleague/csv/compare/9.28.0..9.29.0) - 2026-10-28
+
+### Added
+
+- Support for `Closure` in constant expressions during Record Mapping.
+- `AbstractCsv::fromStream` to instantiate a `Reader` or a `Writer` instance from a stream or a `SplFileObject` object
+- `AbstractCsv::fromPath` to instantiate a `Reader` or a `Writer` instance from a path as a string or a `SplFileInfo` object
+- Support for `SortDirection` enum from PHP 8.6+ - [#580](https://github.com/thephpleague/csv/pull/580) by [okorneliuk](https://github.com/okorneliuk)
+- Record inference feature
+- Added missing `Buffer::value` method
+
+### Deprecated
+
+- None
+
+### Fixed
+
+- Reduce the runtime and peak memory usage of `JsonConverter` pretty printing.
+- `SwapDelimiter::prependTo` now prepends the stream filter instead of appending it.
+- `Writer::forceEnclosure` now doubles embedded enclosures when the escape character is the empty string.
+- `EscapeFormula` round-trip now preserves fields starting with the escape character
+- BOM handling is re-written to fix [#586]([https://github](https://github.com/thephpleague/csv/issues/586))
+- CSV Header during CSV download.
+- Remove `ArrayIterator::uasort` usage because the method is deprecated in PHP8.6.
+- Use `STREAM_FILTER_WRITE` in `prependStreamFilterOnWrite` method - [#577](https://github.com/thephpleague/csv/pull/577) by [zigzagdev](https://github.com/zigzagdev)
+- Initialize `$callback` property to null to prevent uninitialized property - [#576](https://github.com/thephpleague/csv/pull/576) by [zigzagdev](https://github.com/zigzagdev)
+- Fix EscapeFormula round-trip - [#583](https://github.com/thephpleague/csv/pull/583) by [binggao1230](https://github.com/binggao1230)
+- Leave an empty field untouched in EscapeFormula::escapeField - [#593](https://github.com/thephpleague/csv/pull/593) by [lenamonj](https://github.com/lenamonj)
+- Fix `TimeField` separator - [#592](https://github.com/thephpleague/csv/pull/592) by [lenamonj](https://github.com/lenamonj)
+- Fix `Buffer::nth` and `Buffer::nthASObject` [#594](https://github.com/thephpleague/csv/pull/594) by [dualfroz](https://github.com/dualfroz)
+- Fix `FragmentFinder::findFirst` crashing see issue [#596](https://github.com/thephpleague/csv/issues/596)
+- Fix `FragmentFinder` ignoring row and column ranges whose start and end are the same, like `row=4-4` - [#599](https://github.com/thephpleague/csv/pull/599) by [ybai08](https://github.com/ybai08)
+- Fix `FragmentFinder` ignoring positions written with leading zeros, like `row=05-07`, which RFC 7111 allows - [#600](https://github.com/thephpleague/csv/pull/600) by [ybai08](https://github.com/ybai08)
+- Fix `CharsetConverter` decoding `UTF-16` and `UTF-32` input with the wrong byte order after the first chunk when the stream starts with a little-endian BOM - [#602](https://github.com/thephpleague/csv/pull/602) by [wleeaf](https://github.com/wleeaf)
+- Fix `Reader` returning an extra empty record at the end of an `SplFileObject` document when empty records are included - [#603](https://github.com/thephpleague/csv/pull/603) by [wleeaf](https://github.com/wleeaf)
+- Fix the `NOT BETWEEN` and `NOT_BETWEEN` comparison operators being resolved to `BETWEEN` - [#604](https://github.com/thephpleague/csv/pull/604) by [wleeaf](https://github.com/wleeaf)
+- Fix query constraints and orderings throwing an `ArgumentCountError` when the column value is resolved through an object `__call` method - [#605](https://github.com/thephpleague/csv/pull/605) by [youdie006](https://github.com/youdie006)
+- `TabularData::value` now supports negative column offset. Before `null` was always returned; now `null` is only returned if the column offset does not exist.
+
+### Remove
+
+- Support for PHP8.1
+
 ## [9.28.0](https://github.com/thephpleague/csv/compare/9.27.1...9.28.0) - 2025-12-27
 
 ### Added

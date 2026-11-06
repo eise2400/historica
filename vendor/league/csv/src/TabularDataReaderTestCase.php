@@ -140,7 +140,8 @@ abstract class TabularDataReaderTestCase extends TestCase
             return;
         }
 
-        self::assertSame($expected, [...$result]); /* @phpstan-ignore-line */
+        self::assertNotNull($result);
+        self::assertSame($expected, [...$result]);
     }
 
     #[Test]
@@ -192,6 +193,22 @@ abstract class TabularDataReaderTestCase extends TestCase
             ],
         ];
 
+        yield 'row range with the same start and end' =>  [
+            'expression' => 'row=4-4',
+            'expected' => [
+                0 => ['2011-01-03', '0', 'Galway'],
+            ],
+        ];
+
+        yield 'row range with leading zeros' =>  [
+            'expression' => 'row=05-007',
+            'expected' => [
+                0 => ['2011-01-01', '6', 'Berkeley'],
+                1 => ['2011-01-02', '8', 'Berkeley'],
+                2 => ['2011-01-03', '5', 'Berkeley'],
+            ],
+        ];
+
         yield 'single column' => [
             'expression' => 'col=2',
             'expected' => [
@@ -218,6 +235,32 @@ abstract class TabularDataReaderTestCase extends TestCase
             ],
         ];
 
+        yield 'column range with the same start and end' =>  [
+            'expression' => 'col=2-2',
+            'expected' => [
+                0 => [1 => 'temperature'],
+                1 => [1 => '1'],
+                2 => [1 => '-1'],
+                3 => [1 => '0'],
+                4 => [1 => '6'],
+                5 => [1 => '8'],
+                6 => [1 => '5'],
+            ],
+        ];
+
+        yield 'column range with leading zeros' =>  [
+            'expression' => 'col=01-02',
+            'expected' => [
+                0 => ['date', 'temperature'],
+                1 => ['2011-01-01', '1'],
+                2 => ['2011-01-02', '-1'],
+                3 => ['2011-01-03', '0'],
+                4 => ['2011-01-01', '6'],
+                5 => ['2011-01-02', '8'],
+                6 => ['2011-01-03', '5'],
+            ],
+        ];
+
         yield 'single cell selection' =>  [
             'expression' => 'cell=4,1',
             'expected' => [
@@ -227,6 +270,15 @@ abstract class TabularDataReaderTestCase extends TestCase
 
         yield 'single range selection' =>  [
             'expression' => 'cell=4,1-6,2',
+            'expected' => [
+                0 => ['2011-01-03', '0'],
+                1 => ['2011-01-01', '6'],
+                2 => ['2011-01-02', '8'],
+            ],
+        ];
+
+        yield 'single range selection with leading zeros' =>  [
+            'expression' => 'cell=04,01-06,002',
             'expected' => [
                 0 => ['2011-01-03', '0'],
                 1 => ['2011-01-01', '6'],
@@ -272,6 +324,37 @@ abstract class TabularDataReaderTestCase extends TestCase
         yield 'single cell out of the tabular data' => [
             'expression' => 'cell=48,12',
             'expected' => null,
+        ];
+
+        yield 'multiple single rows without range endpoint' => [
+            'expression' => 'row=1;3',
+            'expected' => [
+                0 => ['date', 'temperature', 'place'],
+                1 => ['2011-01-02', '-1', 'Galway'],
+            ],
+        ];
+
+        yield 'mixed single row and row range' => [
+            'expression' => 'row=1;3-5',
+            'expected' => [
+                0 => ['date', 'temperature', 'place'],
+                1 => ['2011-01-02', '-1', 'Galway'],
+                2 => ['2011-01-03', '0', 'Galway'],
+                3 => ['2011-01-01', '6', 'Berkeley'],
+            ],
+        ];
+
+        yield 'multiple single columns without range endpoint' => [
+            'expression' => 'col=1;3',
+            'expected' => [
+                0 => [0 => 'date', 2 => 'place'],
+                1 => [0 => '2011-01-01', 2 => 'Galway'],
+                2 => [0 => '2011-01-02', 2 => 'Galway'],
+                3 => [0 => '2011-01-03', 2 => 'Galway'],
+                4 => [0 => '2011-01-01', 2 => 'Berkeley'],
+                5 => [0 => '2011-01-02', 2 => 'Berkeley'],
+                6 => [0 => '2011-01-03', 2 => 'Berkeley'],
+            ],
         ];
     }
 
@@ -323,6 +406,9 @@ abstract class TabularDataReaderTestCase extends TestCase
             'expression selection is invalid for cell 7' => ['cell=1,0-2,3'],
             'expression selection is invalid for row or column 3' => ['row=0-3'],
             'expression selection is invalid for row or column 4' => ['row=3-0'],
+            'all single row selections are out of bounds' => ['row=0;0'],
+            'expression selection is invalid for row or column 5' => ['row=00'],
+            'expression selection is invalid for cell 8' => ['cell=00,1'],
         ];
     }
 
@@ -350,6 +436,23 @@ abstract class TabularDataReaderTestCase extends TestCase
         $this->expectException(FragmentNotFound::class);
 
         $this->tabularDataWithoutHeader()->matchingFirstOrFail('row=42');
+    }
+
+    #[Test]
+    public function it_throws_when_expression_contains_invalid_single_selection_alongside_valid(): void
+    {
+        $this->expectException(FragmentNotFound::class);
+
+        $this->tabularDataWithoutHeader()->matchingFirstOrFail('row=0;3');
+    }
+
+    #[Test]
+    public function it_returns_valid_rows_when_mixed_selection_contains_invalid_single_row(): void
+    {
+        $result = $this->tabularDataWithoutHeader()->matchingFirst('row=0;3');
+
+        self::assertNotNull($result);
+        self::assertSame([0 => ['2011-01-02', '-1', 'Galway']], [...$result]);
     }
 
     /***************************
@@ -439,6 +542,8 @@ abstract class TabularDataReaderTestCase extends TestCase
         self::assertSame('2011-01-01', $this->tabularDataWithHeader()->value());
         self::assertSame('Galway', $this->tabularDataWithHeader()->value(2));
         self::assertSame('Galway', $this->tabularDataWithHeader()->value('place'));
+        self::assertSame('place', $this->tabularDataWithoutHeader()->value(-1));
+        self::assertSame('Galway', $this->tabularDataWithHeader()->value(-1));
     }
 
     /***************************

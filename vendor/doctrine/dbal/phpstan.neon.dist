@@ -16,6 +16,7 @@ parameters:
             - LogicException
             - RuntimeException
             - ValueError
+            - Psr\Cache\InvalidArgumentException
     ignoreErrors:
         - identifier: missingType.generics
 
@@ -94,7 +95,7 @@ parameters:
         - '~^Parameter #1 \$row of method Doctrine\\DBAL\\Driver\\PgSQL\\Result\:\:mapNumericRow\(\) expects list<string\|null>, .* given\.$~'
 
         # Required for Psalm compatibility
-        - '~^Property Doctrine\\DBAL\\Tests\\Types\\BaseDateTypeTestCase\:\:\$currentTimezone \(non-empty-string\) does not accept string\.$~'
+        - '~^Property Doctrine\\DBAL\\Tests\\Types\\BaseDateTypeTestCase<TType of Doctrine\\DBAL\\Types\\Type>\:\:\$currentTimezone \(non-empty-string\) does not accept string\.$~'
 
         # The @throws annotations are part of a contract. Even if the default implementation doen't throw those
         # exceptions, the child implementations might do so.
@@ -108,6 +109,10 @@ parameters:
         # Type check for legacy implementations of the Result interface
         # TODO: remove in 5.0.0
         - '~^Call to function method_exists\(\) with Doctrine\\DBAL\\Driver\\Result and ''getColumnName'' will always evaluate to true\.$~'
+
+        # Backward-compatible optional MetadataProvider methods, declared via @method on the interface.
+        # TODO: make them interface methods and remove in 5.0.0
+        - '~^Call to function method_exists\(\) with Doctrine\\DBAL\\Schema\\Metadata\\MetadataProvider and ''getUniqueConstraint.*'' will always evaluate to true\.$~'
 
         # TODO: Review these errors and fix them.
         - identifier: phpunit.assertEquals

@@ -1,0 +1,159 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Doctrine\DBAL\Tests\Driver\AbstractOracleDriver;
+
+use Doctrine\DBAL\Driver\AbstractOracleDriver\EasyConnectString;
+use Doctrine\Deprecations\PHPUnit\VerifyDeprecations;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+
+class EasyConnectStringTest extends TestCase
+{
+    use VerifyDeprecations;
+
+    /** @param array<string, mixed> $params */
+    #[DataProvider('connectionParametersProvider')]
+    public function testFromConnectionParameters(array $params, string $expected): void
+    {
+        $string = EasyConnectString::fromConnectionParameters($params);
+
+        self::assertSame($expected, (string) $string);
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, string}> */
+    public static function connectionParametersProvider(): iterable
+    {
+        return [
+            'common-params' => [
+                [
+                    'host' => 'oracle.example.com',
+                    'port' => 1521,
+                    'dbname' => 'XE',
+                ],
+                '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oracle.example.com)(PORT=1521))(CONNECT_DATA=(SID=XE)))',
+            ],
+            'no-db-name' => [
+                ['host' => 'localhost'],
+                '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521)))',
+            ],
+            'service' => [
+                [
+                    'host' => 'localhost',
+                    'port' => 1521,
+                    'service' => true,
+                    'servicename' => 'BILLING',
+                ],
+                '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))'
+                    . '(CONNECT_DATA=(SERVICE_NAME=BILLING)))',
+            ],
+            'advanced-params' => [
+                [
+                    'host' => 'localhost',
+                    'port' => 41521,
+                    'dbname' => 'XE',
+                    'instancename' => 'SALES',
+                    'pooled' => true,
+                ],
+                '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=41521))'
+                    . '(CONNECT_DATA=(SID=XE)(INSTANCE_NAME=SALES)(SERVER=POOLED)))',
+            ],
+            'tcps-params' => [
+                [
+                    'host' => 'localhost',
+                    'port' => 41521,
+                    'dbname' => 'XE',
+                    'instancename' => 'SALES',
+                    'pooled' => true,
+                    'driverOptions' => ['protocol' => 'TCPS'],
+                ],
+                '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=localhost)(PORT=41521))'
+                . '(CONNECT_DATA=(SID=XE)(INSTANCE_NAME=SALES)(SERVER=POOLED)))',
+            ],
+        ];
+    }
+
+    /** @param array<string, mixed> $parameters */
+    #[DataProvider('getConnectionParameters')]
+    public function testParameterDeprecation(
+        array $parameters,
+        string $expectedConnectString,
+        string $deprecation,
+        bool $expectDeprecation,
+    ): void {
+        if ($expectDeprecation) {
+            $this->expectDeprecationWithIdentifier($deprecation);
+        } else {
+            $this->expectNoDeprecationWithIdentifier($deprecation);
+        }
+
+        $string = EasyConnectString::fromConnectionParameters($parameters);
+
+        self::assertSame($expectedConnectString, (string) $string);
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, string, string, bool}> */
+    public static function getConnectionParameters(): iterable
+    {
+        $serviceNameString = '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))'
+            . '(CONNECT_DATA=(SERVICE_NAME=BILLING)))';
+
+        $sidString = '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))'
+            . '(CONNECT_DATA=(SID=BILLING)))';
+
+        yield 'service' => [
+            [
+                'host' => 'localhost',
+                'port' => 1521,
+                'dbname' => 'BILLING',
+                'service' => true,
+            ],
+            $serviceNameString,
+            'https://github.com/doctrine/dbal/pull/7239',
+            true,
+        ];
+
+        yield 'dbname' => [
+            [
+                'host' => 'localhost',
+                'port' => 1521,
+                'dbname' => 'BILLING',
+            ],
+            $sidString,
+            'https://github.com/doctrine/dbal/pull/7239',
+            true,
+        ];
+
+        yield 'servicename' => [
+            [
+                'host' => 'localhost',
+                'port' => 1521,
+                'servicename' => 'BILLING',
+            ],
+            $serviceNameString,
+            'https://github.com/doctrine/dbal/pull/7042',
+            false,
+        ];
+
+        yield 'sid' => [
+            [
+                'host' => 'localhost',
+                'port' => 1521,
+                'sid' => 'BILLING',
+            ],
+            $sidString,
+            'https://github.com/doctrine/dbal/pull/7042',
+            false,
+        ];
+    }
+
+    public function testNoHostOrConnectStringSpecified(): void
+    {
+        $this->expectDeprecationWithIdentifier('https://github.com/doctrine/dbal/pull/7244');
+
+        $string = EasyConnectString::fromConnectionParameters([]);
+
+        self::assertSame('', (string) $string);
+    }
+}

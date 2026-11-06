@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Doctrine\DBAL\Tests\Functional\Schema\PostgreSQL;
+
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Schema\Sequence;
+use Doctrine\DBAL\Schema\Table;
+use Doctrine\DBAL\Tests\FunctionalTestCase;
+use Doctrine\DBAL\Types\Types;
+
+final class SchemaTest extends FunctionalTestCase
+{
+    public function testCreateTableWithSequenceInColumnDefinition(): void
+    {
+        $platform = $this->connection->getDatabasePlatform();
+
+        if (! $platform instanceof PostgreSQLPlatform) {
+            self::markTestSkipped('Test is for PostgreSQL.');
+        }
+
+        $this->dropTableIfExists('my_table');
+
+        $table = Table::editor()
+            ->setUnquotedName('my_table')
+            ->setColumns(
+                Column::editor()
+                    ->setUnquotedName('id')
+                    ->setTypeName(Types::INTEGER)
+                    ->setDefaultValue("nextval('my_table_id_seq'::regclass)")
+                    ->create(),
+            )
+            ->create();
+
+        $sequence = Sequence::editor()
+            ->setUnquotedName('my_table_id_seq')
+            ->create();
+
+        $schema = Schema::editor()
+            ->addTable($table)
+            ->addSequence($sequence)
+            ->create();
+
+        foreach ($schema->toSql($platform) as $sql) {
+            $this->connection->executeStatement($sql);
+        }
+
+        $result = $this->connection->fetchAssociative(
+            'SELECT column_default FROM information_schema.columns WHERE table_name = ?',
+            ['my_table'],
+        );
+
+        self::assertNotFalse($result);
+        self::assertEquals('nextval(\'my_table_id_seq\'::regclass)', $result['column_default']);
+    }
+}

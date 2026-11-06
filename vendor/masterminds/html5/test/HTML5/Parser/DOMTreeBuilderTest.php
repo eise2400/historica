@@ -740,4 +740,30 @@ EOM;
         $this->assertSame(1, $dom->getElementsByTagName('br')->item(0)->attributes->length);
         $this->assertSame(0, $dom->getElementsByTagName('br')->item(1)->attributes->length);
     }
+
+    public function testXmlNamespacesWithQuoteInDeclarationDoesNotThrow()
+    {
+        $doc = $this->parse("<p xmlns='a\"/>'>x</p>", array('xmlNamespaces' => true));
+
+        $p = $doc->getElementsByTagName('p')->item(0);
+        $this->assertSame('a"/>', $p->namespaceURI);
+        $this->assertSame('x', $p->textContent);
+    }
+
+    public function testXmlNamespacesInvalidDeclarationIgnoresErrorHandler()
+    {
+        set_error_handler(function ($no, $str) {
+            throw new \ErrorException($str, 0, $no);
+        });
+
+        $previous = libxml_use_internal_errors(false);
+        try {
+            $doc = $this->parse("<p xmlns='a\x01b'>x</p>", array('xmlNamespaces' => true));
+            $this->assertSame('x', $doc->textContent);
+            $this->assertFalse(libxml_use_internal_errors($previous), 'libxml error mode is restored');
+        } finally {
+            libxml_use_internal_errors($previous);
+            restore_error_handler();
+        }
+    }
 }

@@ -1,6 +1,72 @@
 # Release Notes for 12.x
 
-## [Unreleased](https://github.com/laravel/framework/compare/v12.63.0...12.x)
+## [Unreleased](https://github.com/laravel/framework/compare/v12.70.2...12.x)
+
+## [v12.70.2](https://github.com/laravel/framework/compare/v12.70.1...v12.70.2) - 2026-10-27
+
+* [12.x] Cloud exceptions by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/framework/pull/61934
+* [12.x] Cloud exceptions improvements by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/framework/pull/62186
+
+## [v12.70.1](https://github.com/laravel/framework/compare/v12.70.0...v12.70.1) - 2026-10-21
+
+* [12.x] Prevent escaping from bypassing protection by [@valorin](https://github.com/valorin) in https://github.com/laravel/framework/pull/62027
+
+## [v12.70.0](https://github.com/laravel/framework/compare/v12.69.3...v12.70.0) - 2026-10-13
+
+* [12.x] Address query issues by [@taylorotwell](https://github.com/taylorotwell) in https://github.com/laravel/framework/pull/61838
+* [12.x] Backport EncodedParameter from #61610 by [@mahdyaralipor](https://github.com/mahdyaralipor) in https://github.com/laravel/framework/pull/61871
+* [12.x] Generate different cache file based on configured `$echoFormat` by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61822
+
+## [v12.69.3](https://github.com/laravel/framework/compare/v12.69.2...v12.69.3) - 2026-09-29
+
+* [12.x] Make the worker timed out exit code reachable by [@kieranbrown](https://github.com/kieranbrown) in https://github.com/laravel/framework/pull/61623
+* [12.x] Support named S3 credential providers and Cloud IAM disks by [@kieranbrown](https://github.com/kieranbrown) in https://github.com/laravel/framework/pull/61757
+
+## [v12.69.2](https://github.com/laravel/framework/compare/v12.69.1...v12.69.2) - 2026-09-08
+
+* [12.x] Default memoryExceededExitCode for Cloud by [@jackbayliss](https://github.com/jackbayliss) in https://github.com/laravel/framework/pull/61432
+* Wrap the closure return type in `withFreshQueryLog()` by [@SanderMuller](https://github.com/SanderMuller) in https://github.com/laravel/framework/pull/61458
+* Wrap the autocompleter callback return type in `askWithCompletion()` by [@SanderMuller](https://github.com/SanderMuller) in https://github.com/laravel/framework/pull/61487
+
+## [v12.69.1](https://github.com/laravel/framework/compare/v12.69.0...v12.69.1) - 2026-09-01
+
+* [12.x] Fix TypeError in userFromRecaller() when the recaller matches no user by [@lazerg](https://github.com/lazerg) in https://github.com/laravel/framework/pull/61397
+
+## [v12.69.0](https://github.com/laravel/framework/compare/v12.68.0...v12.69.0) - 2026-09-01
+
+* [12.x] Disable html by default on Laravel exception page tooltip by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61381
+* [12.x] Ensure password hash matches stored cookie before authenticating the user by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61386
+
+## [v12.68.0](https://github.com/laravel/framework/compare/v12.67.0...v12.68.0) - 2026-08-25
+
+* Fix resource loading by [@taylorotwell](https://github.com/taylorotwell) in https://github.com/laravel/framework/pull/61323
+
+## [v12.67.0](https://github.com/laravel/framework/compare/v12.66.0...v12.67.0) - 2026-08-18
+
+* [12.x] Stricten `upload` to be fetch only from request's query string for temporary upload urls by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61145
+* [12.x] Improves `in` validation rule from getting bypass via loose comparison by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61146
+* [12.x] Retry timed-out cloud agent long-polls by [@kieranbrown](https://github.com/kieranbrown) in https://github.com/laravel/framework/pull/61178
+* [12.x] Escape single quotes in Postgres JSON path attributes by [@crynobone](https://github.com/crynobone) in https://github.com/laravel/framework/pull/61192
+* [12.x] Promote nested data to top-level managed queue event by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/framework/pull/61225
+* [12.x] Backport #60908: Avoid quadratic wildcard rule expansion by [@OutlawPlz](https://github.com/OutlawPlz) in https://github.com/laravel/framework/pull/61232
+
+## [v12.66.0](https://github.com/laravel/framework/compare/v12.65.0...v12.66.0) - 2026-08-11
+
+* [12.x] Isolate cloud agent requests from global HTTP client configuration by [@kieranbrown](https://github.com/kieranbrown) in https://github.com/laravel/framework/pull/61068
+* [12.x] Configure a socket timeout for the Cloud log driver by [@jessarcher](https://github.com/jessarcher) in https://github.com/laravel/framework/pull/61082
+* [12.x] ColumnDefinition::unsigned takes a parameter, which should be documented by [@afk11](https://github.com/afk11) in https://github.com/laravel/framework/pull/61123
+
+## [v12.65.0](https://github.com/laravel/framework/compare/v12.64.0...v12.65.0) - 2026-08-05
+
+* [12.x] Prevent fatal errors when logging deprecations fails by [@GrahamCampbell](https://github.com/GrahamCampbell) in https://github.com/laravel/framework/pull/60907
+* [12.x] Fix Factory::insert() with a count of zero by [@alies-dev](https://github.com/alies-dev) in https://github.com/laravel/framework/pull/60911
+* [12.x] Fix schedule:list timezone conversion for range, step, and wildcard cron expressions by [@xiCO2k](https://github.com/xiCO2k) in https://github.com/laravel/framework/pull/60913
+* [12.x] Fix getMigrationBatches return type annotation by [@wouterj](https://github.com/wouterj) in https://github.com/laravel/framework/pull/60973
+
+## [v12.64.0](https://github.com/laravel/framework/compare/v12.63.0...v12.64.0) - 2026-07-14
+
+* [12.x] Enum as queue overlap key by [@finagin](https://github.com/finagin) in https://github.com/laravel/framework/pull/60722
+* [12.x] Add capitalize parameter to Stringable::initials() by [@irabbi360](https://github.com/irabbi360) in https://github.com/laravel/framework/pull/60741
 
 ## [v12.63.0](https://github.com/laravel/framework/compare/v12.62.0...v12.63.0) - 2026-07-07
 

@@ -243,6 +243,122 @@ class BrowserTest extends \Tests\BrowserTestCase
         ;
     }
 
+    public function test_navigate_works_with_teleports_targeting_inside_a_persist()
+    {
+        $this->registerComponentTestRoutes([
+            '/second' => new class extends Component {
+                public function render(){ return <<<'HTML'
+                    <div>
+                        <div>
+                            On second page
+                        </div>
+
+                        @persist('header')
+                            <div>Placeholder</div>
+                        @endpersist
+                    </div>
+                HTML; }
+            },
+        ]);
+
+        Livewire::visit(new class extends Component {
+            public function render(){
+                return <<<'HTML'
+                    <div>
+                        <div>
+                            On first page
+                        </div>
+
+                        @persist('header')
+                            <div x-data="{ outerScopeCount: 0 }">
+                                <div id="labels"></div>
+
+                                <template x-teleport="#labels">
+                                    <div>
+                                        <span x-text="outerScopeCount" dusk="target"></span>
+                                        <button x-on:click="outerScopeCount++" dusk="button">inc</button>
+                                    </div>
+                                </template>
+                            </div>
+                        @endpersist
+
+                        <a href="/second" wire:navigate dusk="link">Go to second page</a>
+                    </div>
+                HTML;
+            }
+        })
+        ->assertSeeIn('@target', '0')
+        ->click('@button')
+        ->assertSeeIn('@target', '1')
+        ->click('@link')
+        ->waitForText('On second page')
+        ->assertSeeIn('@target', '1')
+        ->click('@button')
+        ->assertSeeIn('@target', '2')
+        ;
+    }
+
+    public function test_navigate_works_with_teleports_targeting_inside_another_persist()
+    {
+        $this->registerComponentTestRoutes([
+            '/second' => new class extends Component {
+                public function render(){ return <<<'HTML'
+                    <div>
+                        <div>
+                            On second page
+                        </div>
+
+                        @persist('header')
+                            <div>Placeholder</div>
+                        @endpersist
+
+                        @persist('sidebar')
+                            <div>Placeholder</div>
+                        @endpersist
+                    </div>
+                HTML; }
+            },
+        ]);
+
+        Livewire::visit(new class extends Component {
+            public function render(){
+                return <<<'HTML'
+                    <div>
+                        <div>
+                            On first page
+                        </div>
+
+                        @persist('header')
+                            <div x-data="{ outerScopeCount: 0 }">
+                                <template x-teleport="#labels">
+                                    <div>
+                                        <span x-text="outerScopeCount" dusk="target"></span>
+                                        <button x-on:click="outerScopeCount++" dusk="button">inc</button>
+                                    </div>
+                                </template>
+                            </div>
+                        @endpersist
+
+                        @persist('sidebar')
+                            <div id="labels"></div>
+                        @endpersist
+
+                        <a href="/second" wire:navigate dusk="link">Go to second page</a>
+                    </div>
+                HTML;
+            }
+        })
+        ->assertSeeIn('@target', '0')
+        ->click('@button')
+        ->assertSeeIn('@target', '1')
+        ->click('@link')
+        ->waitForText('On second page')
+        ->assertSeeIn('@target', '1')
+        ->click('@button')
+        ->assertSeeIn('@target', '2')
+        ;
+    }
+
     public function test_can_configure_progress_bar()
     {
         $this->browse(function ($browser) {
@@ -266,6 +382,32 @@ class BrowserTest extends \Tests\BrowserTestCase
                 ->pause(500)
                 ->assertMissing('#nprogress')
                 ->waitForText('Done loading...');
+        });
+    }
+
+    public function test_progress_bar_stays_above_positioned_elements_while_it_fades_out()
+    {
+        $this->browse(function ($browser) {
+            $browser
+                ->visit('/first')
+                ->assertSee('On first')
+                ->assertScript(<<<'JS'
+                    (() => {
+                        // A fixed sidebar with a z-index, like most app layouts have...
+                        let sidebar = document.createElement('div')
+                        sidebar.style.cssText = 'position: fixed; top: 0; left: 0; z-index: 20; width: 200px; height: 100px; background: #eee'
+                        document.body.prepend(sidebar)
+
+                        // The bar mid fade-out: NProgress fades it by lowering #nprogress's opacity...
+                        let progress = document.createElement('div')
+                        progress.id = 'nprogress'
+                        progress.style.cssText = 'opacity: 0.5; pointer-events: auto'
+                        progress.innerHTML = '<div class="bar"></div>'
+                        document.body.append(progress)
+
+                        return document.elementFromPoint(50, 1) === progress.querySelector('.bar')
+                    })()
+                JS);
         });
     }
 
@@ -527,6 +669,60 @@ class BrowserTest extends \Tests\BrowserTestCase
                 ->assertSee('Query: 1')
                 ->waitForNavigate()->click('@link.with.query.2')
                 ->assertSee('Query: 2');
+        });
+    }
+
+    public function test_navigate_scrolls_to_fragment_targets()
+    {
+        $this->browse(function ($browser) {
+            foreach (['comments', 'comments%3Areplies', '100%', 'legacy-comments'] as $index => $fragment) {
+                $browser
+                    ->visit('/first-scroll')
+                    ->waitForNavigate()->click('@link.to.fragment.'.$index)
+                    ->assertFragmentIs($fragment)
+                    ->assertInViewPort('@second-target');
+            }
+        });
+    }
+
+    public function test_navigate_with_an_unknown_fragment_scrolls_to_top()
+    {
+        $this->browse(function ($browser) {
+            $browser
+                ->visit('/first-scroll')
+                ->waitForNavigate()->click('@link.to.fragment.4')
+                ->assertFragmentIs('missing')
+                ->assertScript('window.scrollY', 0);
+        });
+    }
+
+    public function test_navigate_fragment_does_not_override_history_scroll_restoration()
+    {
+        $this->browse(function ($browser) {
+            $browser
+                ->visit('/first-scroll')
+                ->waitForNavigate()->click('@link.to.fragment.0')
+                ->assertInViewPort('@second-target');
+
+            $browser->script('window.scrollTo(0, 0)');
+
+            $browser
+                ->assertScript('window.scrollY', 0)
+                ->waitForNavigate()->back()
+                ->waitForNavigate()->forward()
+                ->assertFragmentIs('comments')
+                ->assertScript('window.scrollY', 0);
+        });
+    }
+
+    public function test_navigate_fragment_respects_preserve_scroll()
+    {
+        $this->browse(function ($browser) {
+            $browser
+                ->visit('/first-scroll')
+                ->waitForNavigate()->click('@link.to.fragment.with.preserve.scroll')
+                ->assertFragmentIs('comments')
+                ->assertScript('window.scrollY', 0);
         });
     }
 
@@ -1515,6 +1711,14 @@ class FirstScrollPage extends Component
         <div>
             <div>On first</div>
 
+            <div style="position: fixed; top: 0; right: 0;">
+                <a href="/second-scroll#comments" wire:navigate.preserve-scroll dusk="link.to.fragment.with.preserve.scroll">Preserve scroll</a>
+
+                @foreach (['comments', 'comments%3Areplies', '100%', 'legacy-comments', 'missing'] as $fragment)
+                    <a href="/second-scroll#{{ $fragment }}" wire:navigate dusk="link.to.fragment.{{ $loop->index }}">Go to fragment</a>
+                @endforeach
+            </div>
+
             <div style="height: 100vh;">spacer</div>
 
             <div dusk="first-target">below the fold</div>
@@ -1580,7 +1784,12 @@ class SecondScrollPage extends Component
 
             <div style="height: 100vh;">spacer</div>
 
-            <div dusk="second-target">below the fold</div>
+            <div id="comments" dusk="second-target">
+                <span id="comments:replies">Replies</span>
+                <span id="100%">Percentage</span>
+                <a name="legacy-comments">Legacy comments</a>
+                below the fold
+            </div>
 
             <div style="height: 100vh;">spacer</div>
         </div>

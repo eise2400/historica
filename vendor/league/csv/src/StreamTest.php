@@ -167,14 +167,19 @@ final class StreamTest extends TestCase
     {
         $this->expectException(UnavailableFeature::class);
 
-        $stream = Stream::from(STDIN);
+        /** @var resource $filePointer */
+        $filePointer = fopen('php://stdout', 'w');
+        $stream = Stream::from($filePointer);
         $stream->rewind();
     }
 
     public function testCreateStreamWithNonSeekableStream(): void
     {
         $this->expectException(UnavailableFeature::class);
-        $stream = Stream::from(STDIN);
+
+        /** @var resource $filePointer */
+        $filePointer = fopen('php://stdout', 'w');
+        $stream = Stream::from($filePointer);
         $stream->seek(3);
     }
 
@@ -216,6 +221,7 @@ TEXT;
         $newText = '';
         $file = Stream::fromString($text);
         $file->setMaxLineLen(20);
+        /** @var string $line */
         foreach ($file as $line) {
             $newText .= $line."\n";
         }
@@ -241,7 +247,7 @@ final class StreamWrapper
     public static function register(): void
     {
         if (!in_array(self::PROTOCOL, stream_get_wrappers(), true)) {
-            stream_wrapper_register(self::PROTOCOL, __CLASS__);
+            stream_wrapper_register(self::PROTOCOL, self::class);
         }
     }
 

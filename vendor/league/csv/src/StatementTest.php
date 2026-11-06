@@ -19,7 +19,6 @@ use OutOfBoundsException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
-use SplTempFileObject;
 
 use function array_reverse;
 use function in_array;
@@ -38,14 +37,13 @@ final class StatementTest extends TestCase
 
     protected function setUp(): void
     {
-        $tmp = new SplTempFileObject();
-        $tmp->setCsvControl(escape: '\\');
+        $tmp = tmpfile();
         foreach ($this->expected as $row) {
-            $tmp->fputcsv($row, escape: '\\');
+            fputcsv(stream: $tmp, fields: $row, escape: '\\');
         }
 
         $this->csv = Reader::from($tmp);
-        $this->stmt = (new Statement());
+        $this->stmt = new Statement();
     }
 
     protected function tearDown(): void
@@ -169,7 +167,7 @@ final class StatementTest extends TestCase
     public function testOrderBy(): void
     {
         $calculated = $this->stmt
-            ->orderBy(fn (array $rowA, array $rowB): int => strcmp($rowA[0], $rowB[0])) /* @phpstan-ignore-line */
+            ->orderBy(fn (array $rowA, array $rowB): int => strcmp((string) $rowA[0], (string) $rowB[0]))  /* @phpstan-ignore-line */
             ->process($this->csv);
 
         self::assertSame(array_reverse($this->expected), array_values([...$calculated]));
@@ -200,7 +198,7 @@ final class StatementTest extends TestCase
     public function testOrderByWithEquity(): void
     {
         $calculated = $this->stmt
-            ->orderBy(fn (array $rowA, array $rowB): int => strlen($rowA[0]) <=> strlen($rowB[0])) /* @phpstan-ignore-line */
+            ->orderBy(fn (array $rowA, array $rowB): int => strlen((string) $rowA[0]) <=> strlen((string) $rowB[0]))  /* @phpstan-ignore-line */
             ->process($this->csv);
 
         self::assertSame($this->expected, array_values([...$calculated]));

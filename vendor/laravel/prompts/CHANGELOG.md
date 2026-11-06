@@ -1,6 +1,38 @@
 # Release Notes
 
-## [Unreleased](https://github.com/laravel/prompts/compare/v0.3.20...main)
+## [Unreleased](https://github.com/laravel/prompts/compare/v0.3.25...main)
+
+## [v0.3.25](https://github.com/laravel/prompts/compare/v0.3.24...v0.3.25) - 2026-10-06
+
+* Fix memory leak in test suite by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/prompts/pull/273
+* Fix PHPStan signal handler type errors by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/prompts/pull/275
+* Fix undefined collect() in GridTest by [@timacdonald](https://github.com/timacdonald) in https://github.com/laravel/prompts/pull/274
+
+## [v0.3.24](https://github.com/laravel/prompts/compare/v0.3.23...v0.3.24) - 2026-08-20
+
+* Fix incorrect rendering of nested fg-color tags in select() title (#189) by [@wakqasahmed](https://github.com/wakqasahmed) in https://github.com/laravel/prompts/pull/266
+
+## [v0.3.23](https://github.com/laravel/prompts/compare/v0.3.22...v0.3.23) - 2026-08-11
+
+* Preserve original signal handlers in Task and Spinner, fixes #263 by [@tminich](https://github.com/tminich) in https://github.com/laravel/prompts/pull/264
+
+## [v0.3.22](https://github.com/laravel/prompts/compare/v0.3.21...v0.3.22) - 2026-08-04
+
+* Bump actions/checkout from 7.0.0 to 7.0.1 in the github-actions group by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/laravel/prompts/pull/257
+* Fix missing corners on header-less tables and grids by [@WaleedHU](https://github.com/WaleedHU) in https://github.com/laravel/prompts/pull/260
+* Truncate grid items that are wider than the grid by [@WaleedHU](https://github.com/WaleedHU) in https://github.com/laravel/prompts/pull/261
+
+## [v0.3.21](https://github.com/laravel/prompts/compare/v0.3.20...v0.3.21) - 2026-06-26
+
+### What's Changed
+
+* Bump actions/checkout from 6.0.3 to 7.0.0 in the github-actions group by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/laravel/prompts/pull/252
+* Add Link element with OSC 8 hyperlink support by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/prompts/pull/253
+* Remove `content()` from elements in favor of public readonly properties by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/prompts/pull/254
+* Highlight links in callouts by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/prompts/pull/255
+* Clean up callout rendering logic by [@joetannenbaum](https://github.com/joetannenbaum) in https://github.com/laravel/prompts/pull/256
+
+**Full Changelog**: https://github.com/laravel/prompts/compare/v0.3.20...v0.3.21
 
 ## [v0.3.20](https://github.com/laravel/prompts/compare/v0.3.19...v0.3.20) - 2026-06-24
 

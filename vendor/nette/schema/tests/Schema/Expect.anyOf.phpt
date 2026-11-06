@@ -1,0 +1,318 @@
+<?php declare(strict_types=1);
+
+use Nette\Schema\{Expect, Processor};
+use Tester\Assert;
+
+require __DIR__ . '/../bootstrap.php';
+
+
+test('with scalars', function () {
+	$schema = Expect::anyOf('one', true, Expect::int());
+
+	Assert::same('one', (new Processor)->process($schema, 'one'));
+
+	Assert::same(true, (new Processor)->process($schema, true));
+
+	Assert::same(123, (new Processor)->process($schema, 123));
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, false);
+	}, ["The item expects to be 'one'|true|int, false given."]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, 'two');
+	}, ["The item expects to be 'one'|true|int, 'two' given."]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, null);
+	}, ["The item expects to be 'one'|true|int, null given."]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, []);
+	}, ["The item expects to be 'one'|true|int, array given."]);
+});
+
+
+test('with complex structure', function () {
+	$schema = Expect::anyOf(Expect::listOf('string'), true, Expect::int());
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, false);
+	}, ['The item expects to be list|true|int, false given.']);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, [123]);
+	}, ["The item '0' expects to be string, 123 given."]);
+
+	Assert::same(['foo'], (new Processor)->process($schema, ['foo']));
+});
+
+
+test('with asserts', function () {
+	$schema = Expect::anyOf(Expect::string()->assert('strlen'), true);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, '');
+	}, ["Failed assertion strlen() for item with value ''."]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, 123);
+	}, ['The item expects to be string|true, 123 given.']);
+
+	Assert::same('foo', (new Processor)->process($schema, 'foo'));
+});
+
+
+test('no default value', function () {
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(Expect::string(), Expect::int()),
+		'key2' => Expect::anyOf(Expect::string('default'), true, Expect::int()),
+		'key3' => Expect::anyOf(true, Expect::string('default'), Expect::int()),
+	]);
+
+	Assert::equal(
+		(object) ['key1' => null, 'key2' => null, 'key3' => null],
+		(new Processor)->process($schema, []),
+	);
+});
+
+
+test('required', function () {
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(Expect::string(), Expect::int())->required(),
+		'key2' => Expect::anyOf(Expect::string('default'), true, Expect::int())->required(),
+		'key3' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required(),
+		'key4' => Expect::anyOf(Expect::string()->nullable(), Expect::int())->required(),
+		'key5' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required()->nullable(),
+	]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, []);
+	}, [
+		"The mandatory item 'key1' is missing.",
+		"The mandatory item 'key2' is missing.",
+		"The mandatory item 'key3' is missing.",
+		"The mandatory item 'key4' is missing.",
+		"The mandatory item 'key5' is missing.",
+	]);
+});
+
+
+test('required as argument', function () {
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(Expect::string(), Expect::int())->required(),
+		'key1nr' => Expect::anyOf(Expect::string(), Expect::int())->required(false),
+		'key2' => Expect::anyOf(Expect::string('default'), true, Expect::int())->required(),
+		'key2nr' => Expect::anyOf(Expect::string('default'), true, Expect::int())->required(false),
+		'key3' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required(),
+		'key3nr' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required(false),
+		'key4' => Expect::anyOf(Expect::string()->nullable(), Expect::int())->required(),
+		'key4nr' => Expect::anyOf(Expect::string()->nullable(), Expect::int())->required(false),
+		'key5' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required()->nullable(),
+		'key5nr' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required(false)->nullable(),
+	]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, []);
+	}, [
+		"The mandatory item 'key1' is missing.",
+		"The mandatory item 'key2' is missing.",
+		"The mandatory item 'key3' is missing.",
+		"The mandatory item 'key4' is missing.",
+		"The mandatory item 'key5' is missing.",
+	]);
+});
+
+
+test('not nullable', function () {
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(Expect::string(), Expect::int()),
+		'key2' => Expect::anyOf(Expect::string('default'), true, Expect::int()),
+		'key3' => Expect::anyOf(true, Expect::string('default'), Expect::int()),
+	]);
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, ['key1' => null, 'key2' => null, 'key3' => null]);
+	}, [
+		"The item 'key1' expects to be string|int, null given.",
+		"The item 'key2' expects to be string|true|int, null given.",
+		"The item 'key3' expects to be true|string|int, null given.",
+	]);
+});
+
+
+test('required & nullable', function () {
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(Expect::string()->nullable(), Expect::int())->required(),
+		'key2' => Expect::anyOf(Expect::string('default'), true, Expect::int(), null)->required(),
+		'key3' => Expect::anyOf(true, Expect::string('default'), Expect::int())->required()->nullable(),
+	]);
+
+	Assert::equal(
+		(object) ['key1' => null, 'key2' => null, 'key3' => null],
+		(new Processor)->process($schema, ['key1' => null, 'key2' => null, 'key3' => null]),
+	);
+});
+
+
+test('deprecated item', function () {
+	$schema = Expect::anyOf('one', true, Expect::int()->deprecated());
+
+	$processor = new Processor;
+	Assert::same('one', $processor->process($schema, 'one'));
+	Assert::same([], $processor->getWarnings());
+
+	Assert::same(true, $processor->process($schema, true));
+	Assert::same([], $processor->getWarnings());
+
+	Assert::same(123, $processor->process($schema, 123));
+	Assert::same(['The item is deprecated.'], $processor->getWarnings());
+});
+
+
+test('deprecated anyOf', function () {
+	$schema = Expect::structure([
+		'a' => Expect::anyOf('one', 'two')->deprecated(),
+	]);
+
+	$processor = new Processor;
+	$processor->process($schema, ['a' => 'one']);
+	Assert::same(["The item 'a' is deprecated."], $processor->getWarnings());
+
+	$processor->process($schema, []);
+	Assert::same([], $processor->getWarnings());
+});
+
+
+test('nullable anyOf', function () {
+	$schema = Expect::anyOf(Expect::string(), true)->nullable();
+
+	Assert::same('one', (new Processor)->process($schema, 'one'));
+
+	Assert::same(null, (new Processor)->process($schema, null));
+
+	checkValidationErrors(function () use ($schema) {
+		(new Processor)->process($schema, false);
+	}, ['The item expects to be string|true|null, false given.']);
+});
+
+
+test('processing', function () {
+	$schema = Expect::anyOf(Expect::string(), true)->nullable();
+	$processor = new Processor;
+
+	Assert::same('one', $processor->process($schema, 'one'));
+	Assert::same(null, $processor->process($schema, null));
+
+	checkValidationErrors(function () use ($schema, $processor) {
+		$processor->process($schema, false);
+	}, ['The item expects to be string|true|null, false given.']);
+
+
+	Assert::same('two', $processor->processMultiple($schema, ['one', 'two']));
+	Assert::same(null, $processor->processMultiple($schema, ['one', null]));
+});
+
+
+test('Schema as default value', function () {
+	$default = Expect::structure([
+		'key2' => Expect::string(),
+	])->castTo('array');
+
+	$schema = Expect::structure([
+		'key1' => Expect::anyOf(false, $default)->default($default),
+	])->castTo('array');
+
+	Assert::same(['key1' => ['key2' => null]], (new Processor)->process($schema, null));
+});
+
+
+test('First is default', function () {
+	$schema = Expect::structure([
+		'key' => Expect::anyOf(
+			Expect::string('def'),
+			false,
+		)->firstIsDefault(),
+	])->castTo('array');
+
+	Assert::same(['key' => 'def'], (new Processor)->process($schema, null));
+});
+
+
+testException(
+	'Empty set',
+	fn() => Expect::anyOf(),
+	Nette\InvalidStateException::class,
+	'The enumeration must not be empty.',
+);
+
+
+test('skipDefaults is inherited by alternatives', function () {
+	$schema = Expect::structure([
+		'inner' => Expect::anyOf(
+			Expect::structure([
+				'a' => Expect::string('def'),
+				'b' => Expect::string(),
+			]),
+			false,
+		),
+	]);
+
+	$processor = new Processor;
+	$processor->skipDefaults();
+	Assert::equal(
+		(object) ['inner' => (object) ['b' => 'x']],
+		$processor->process($schema, ['inner' => ['b' => 'x']]),
+	);
+});
+
+
+test('normalization', function () {
+	$schema = Expect::anyOf(
+		Expect::string()->before(fn($v) => (string) $v),
+	);
+	Assert::same('1', (new Processor)->process($schema, 1));
+});
+
+
+test('an accepted null is not claimed by a variant that would coerce it', function () {
+	$processor = new Processor;
+
+	// a structure and an array turn null into an empty value of their own, a tuple refuses it
+	Assert::null($processor->process(Expect::anyOf(Expect::int(), Expect::structure(['a' => Expect::string()]))->nullable(), null));
+	Assert::null($processor->process(Expect::anyOf(Expect::int(), Expect::tuple([Expect::string(), Expect::int()]))->nullable(), null));
+	Assert::null($processor->process(Expect::anyOf(Expect::int(), Expect::arrayOf('string'))->nullable(), null));
+
+	// wherever the null sits in the set
+	Assert::null($processor->process(Expect::anyOf(Expect::structure(['a' => Expect::string()]), null), null));
+	Assert::null($processor->process(Expect::anyOf(null, Expect::structure(['a' => Expect::string()])), null));
+
+	// a null that is not accepted still is an error
+	checkValidationErrors(function () use ($processor) {
+		$processor->process(Expect::anyOf(Expect::int(), Expect::string()), null);
+	}, ['The item expects to be int|string, null given.']);
+
+	// also inside a nested anyOf()
+	Assert::null($processor->process(
+		Expect::anyOf(Expect::anyOf(Expect::int(), Expect::structure(['a' => Expect::string()])), null),
+		null,
+	));
+
+	// a variant that handles null by itself still wins in order
+	Assert::same(7, $processor->process(Expect::anyOf(Expect::int()->nullable()->transform(fn($v) => $v ?? 7), null), null));
+	Assert::same('x', $processor->process(Expect::anyOf(Expect::mixed()->transform(fn($v) => $v ?? 'x'), null), null));
+	Assert::same('fallback', $processor->process(Expect::anyOf(Expect::string()->before(fn($v) => $v ?? 'fallback'), null), null));
+	Assert::same(
+		['list' => []],
+		$processor->process(Expect::anyOf(
+			Expect::structure(['list' => Expect::arrayOf('string')])->castTo('array')->before(fn($v) => $v ?? ['list' => null]),
+			null,
+		), null),
+	);
+
+	// alone, the structure keeps turning null into its defaults
+	Assert::equal(
+		(object) ['a' => null],
+		$processor->process(Expect::structure(['a' => Expect::string()]), null),
+	);
+});

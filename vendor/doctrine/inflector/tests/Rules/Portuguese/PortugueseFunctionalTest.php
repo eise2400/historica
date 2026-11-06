@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Doctrine\Tests\Inflector\Rules\Portuguese;
+
+use Doctrine\Inflector\Inflector;
+use Doctrine\Inflector\InflectorFactory;
+use Doctrine\Inflector\Language;
+use Doctrine\Tests\Inflector\Rules\LanguageFunctionalTestCase;
+
+class PortugueseFunctionalTest extends LanguageFunctionalTestCase
+{
+    /** @return string[][] */
+    public static function dataSampleWords(): array
+    {
+        return [
+            ['livro', 'livros'],
+            ['radio', 'radios'],
+            ['senhor', 'senhores'],
+            ['lei', 'leis'],
+            ['rei', 'reis'],
+            ['luz', 'luzes'],
+            ['juiz', 'juizes'],
+            ['avião', 'aviões'],
+            ['cão', 'cães'],
+            ['interesse', 'interesses'],
+            ['ás', 'ases'],
+            ['mão', 'mãos'],
+            ['peão', 'peões'],
+            ['casa', 'casas'],
+            ['árvore', 'árvores'],
+            ['cor', 'cores'],
+            ['álbum', 'álbuns'],
+            ['mulher', 'mulheres'],
+            ['nação', 'nações'],
+            ['país', 'países'],
+            ['chão', 'chãos'],
+            ['charlatão', 'charlatães'],
+            ['cidadão', 'cidadãos'],
+            ['cônsul', 'cônsules'],
+            ['cristão', 'cristãos'],
+            ['difícil', 'difíceis'],
+            ['email', 'emails'],
+            ['mês', 'meses'],
+            ['útil', 'úteis'],
+        ];
+    }
+
+    protected function createInflector(): Inflector
+    {
+        return InflectorFactory::createForLanguage(Language::PORTUGUESE)->build();
+    }
+}

@@ -6,6 +6,170 @@ awareness about deprecated code.
 - Use of our low-overhead runtime deprecation API, details:
   https://github.com/doctrine/deprecations/
 
+# Upgrade to 4.5
+
+## Deprecated not implementing unique constraint introspection in `MetadataProvider`
+
+`Doctrine\DBAL\Schema\Metadata\MetadataProvider` implementations should now implement
+`getUniqueConstraintColumnsForAllTables()` and `getUniqueConstraintColumnsForTable()`. Not implementing them is
+deprecated. Both methods will become part of the interface in DBAL 5.0.
+
+## Deprecated the `simple_array` type
+
+The `simple_array` type has been deprecated. Use the `json` type instead.
+
+The following class and constant have been deprecated:
+
+- `SimpleArrayType`,
+- `Types::SIMPLE_ARRAY`.
+
+## Marked `AbstractNamedObject` and `AbstractOptionallyNamedObject` classes as internal
+
+The `AbstractNamedObject` and `AbstractOptionallyNamedObject` classes have been marked as internal. Use the
+`NamedObject` and `OptionallyNamedObject` interfaces instead.
+
+## Deprecated `Schema` features
+
+The `Schema` constructor has been marked as internal. Use `Schema::editor()` to instantiate an editor and
+`SchemaEditor::create()` to create a schema.
+
+The following `Schema` methods have been deprecated:
+
+- `Schema::createTable()` - use `Schema::edit()` and `SchemaEditor::addTable()` instead.
+- `Schema::renameTable()` - use `Schema::edit()` and `SchemaEditor::renameTable()` instead.
+- `Schema::dropTable()` - use `Schema::edit()` and `SchemaEditor::dropTable()` instead.
+- `Schema::createSequence()` - use `Schema::edit()` and `SchemaEditor::addSequence()` instead.
+- `Schema::dropSequence()` - use `Schema::edit()` and `SchemaEditor::dropSequence()` instead.
+
+`Schema::createTable()` applies the default table options from `SchemaConfig` to the table it constructs. Callers
+migrating to `SchemaEditor::addTable()` must apply those options themselves, e.g. via
+`Table::editor()->setOptions($schemaConfig->getDefaultTableOptions())`.
+
+## Deprecated `Column` mutators
+
+The following `Column` methods have been deprecated. Use `Column::editor()` and the corresponding `ColumnEditor`
+method instead:
+
+- `Column::setOptions()` - use `Column::editor()` and configure the editor via the option-specific methods.
+- `Column::setType()` - use `ColumnEditor::setType()` or `ColumnEditor::setTypeName()`.
+- `Column::setLength()` - use `ColumnEditor::setLength()`.
+- `Column::setPrecision()` - use `ColumnEditor::setPrecision()`.
+- `Column::setScale()` - use `ColumnEditor::setScale()`.
+- `Column::setUnsigned()` - use `ColumnEditor::setUnsigned()`.
+- `Column::setFixed()` - use `ColumnEditor::setFixed()`.
+- `Column::setNotnull()` - use `ColumnEditor::setNotNull()`.
+- `Column::setDefault()` - use `ColumnEditor::setDefaultValue()`.
+- `Column::setPlatformOptions()` and `Column::setPlatformOption()` - use the option-specific `ColumnEditor` methods
+  (`setCharset()`, `setCollation()`, `setMinimumValue()`, `setMaximumValue()`, `setEnumType()`).
+- `Column::setColumnDefinition()` - use `ColumnEditor::setColumnDefinition()`.
+- `Column::setAutoincrement()` - use `ColumnEditor::setAutoincrement()`.
+- `Column::setComment()` - use `ColumnEditor::setComment()`.
+- `Column::setValues()` - use `ColumnEditor::setValues()`.
+
+## Deprecated `Column::getType()`, `Column::setType()` and passing a `Type` instance to `Column::__construct()`
+
+`Column` now stores the DBAL type name (string) as source of truth. Use
+`Column::getTypeName()` / `Column::setTypeName()` and pass the type name to
+the constructor instead of a `Type` instance.
+
+```diff
+-use Doctrine\DBAL\Types\Type;
+ use Doctrine\DBAL\Types\Types;
+
+-$column = new Column('id', Type::getType(Types::INTEGER));
++$column = new Column('id', Types::INTEGER);
+
+-$typeName = Type::getTypeRegistry()->lookupName($column->getType());
++$typeName = $column->getTypeName();
+```
+
+Libraries that need to support older DBAL versions can keep passing a `Type`
+instance; the deprecated path stays functional until the next major.
+
+### BC note for `Column` subclasses
+
+`Column` is `@final`, but extending it stays possible until the next major.
+The protected `$_type` property is no longer the source of truth: it is not
+initialized when a column is built with `setTypeName()`. Child classes that
+read `$this->_type` directly must use `getType()` (or `getTypeName()`) instead,
+otherwise reading it throws a "typed property must not be accessed before
+initialization" error. The new `$_typeName` property is private.
+
+## Deprecated the `type` key of column definition arrays
+
+The arrays consumed by `AbstractPlatform::getColumnDeclarationListSQL()`,
+`AbstractPlatform::getColumnDeclarationSQL()` and
+`AbstractPlatform::getDefaultValueDeclarationSQL()` now carry the type name
+under the `typeName` key. Providing a `Type` instance under the `type` key is
+deprecated, and both keys are accepted until the next major.
+
+```diff
+-use Doctrine\DBAL\Types\Type;
+ use Doctrine\DBAL\Types\Types;
+
+ $sql = $platform->getColumnDeclarationListSQL([
+     [
+         'name'     => 'id',
+         'notnull'  => true,
+-        'type'     => Type::getType(Types::INTEGER),
++        'typeName' => Types::INTEGER,
+     ],
+ ]);
+```
+
+A definition array that carries neither key now throws
+`Doctrine\DBAL\Exception\InvalidColumnDeclaration`.
+
+Platforms resolving the type of such an array should call the new
+`AbstractPlatform::getColumnType()` instead of reading the key directly.
+
+## Deprecated `Table` features
+
+The `Table` constructor has been marked as internal. Use `Table::editor()` to instantiate an editor and
+`TableEditor::create()` to create a table.
+
+The following `Table` mutators have been deprecated. Use `Table::edit()` and the corresponding `TableEditor` method
+instead:
+
+- `Table::addColumn()` - use `TableEditor::addColumn()`.
+- `Table::renameColumn()` - use `TableEditor::renameColumn()`.
+- `Table::modifyColumn()` - use `TableEditor::modifyColumn()`.
+- `Table::dropColumn()` - use `TableEditor::dropColumn()`.
+- `Table::addIndex()` and `Table::addUniqueIndex()` - use `TableEditor::addIndex()`.
+- `Table::renameIndex()` - use `TableEditor::renameIndex()`.
+- `Table::dropIndex()` - use `TableEditor::dropIndex()`.
+- `Table::addPrimaryKeyConstraint()` - use `TableEditor::addPrimaryKeyConstraint()`.
+- `Table::dropPrimaryKey()` - use `TableEditor::dropPrimaryKeyConstraint()`.
+- `Table::addUniqueConstraint()` - use `TableEditor::addUniqueConstraint()`.
+- `Table::dropUniqueConstraint()` - use `TableEditor::dropUniqueConstraint()`.
+- `Table::addForeignKeyConstraint()` - use `TableEditor::addForeignKeyConstraint()`.
+- `Table::dropForeignKey()` - use `TableEditor::dropForeignKeyConstraint()`.
+- `Table::addOption()` - use `TableEditor::setOptions()`.
+- `Table::setComment()` - use `TableEditor::setComment()`.
+
+## Deprecated `TableDiff::getRenamedIndexes()`
+
+The `TableDiff::getRenamedIndexes()` method has been deprecated. Use `TableDiff::getIndexRenames()` instead, which
+returns a list of `IndexRename` instances exposing the old name as an `UnqualifiedName` and the new `Index` directly,
+instead of an `array<string, Index>` keyed by the raw old name.
+
+## Deprecated `Doctrine\DBAL\SQL\Parser\Exception`
+
+The SQL parser does not raise checked exceptions: the only thing it ever throws is
+`Doctrine\DBAL\SQL\Parser\Exception\RegularExpressionError`, an unchecked `RuntimeException`
+subclass that signals an exhausted PCRE engine limit. The `Parser\Exception` interface has
+been deprecated and will be removed in 5.0.
+
+## Deprecated not specifying either of the `host` and `connectstring` parameters for `oci8` and `pdo_oci` connections.
+
+Not specifying either of the `host` and `connectstring` parameters for `oci8` and `pdo_oci` connections has been
+deprecated. One of them must be specified.
+
+## Deprecated `dbname` connection parameter for `oci8` and `pdo_oci` connections.
+
+Using the `dbname` connection parameter for `oci8` and `pdo_oci` connections has been deprecated. Use `servicename`,
+`sid` or `connectstring` instead.
+
 # Upgrade to 4.4
 
 ## Deprecated using current date, time and timestamp SQL expressions as default values

@@ -11,6 +11,7 @@ use Livewire\Features\SupportDisablingBackButtonCache\SupportDisablingBackButton
 use League\Flysystem\PathTraversalDetected;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Http\UploadedFile;
 use Facades\Livewire\Features\SupportFileUploads\GenerateSignedUploadUrl;
 use Illuminate\Http\Testing\FileFactory;
@@ -96,6 +97,30 @@ class UnitTest extends \Tests\TestCase
         $tmpFiles = $component->call('$refresh')->viewData('photos');
 
         $this->assertCount(1, $tmpFiles);
+    }
+
+    public function test_can_remove_a_file_from_a_collection_of_files_property()
+    {
+        $file1 = UploadedFile::fake()->image('avatar1.jpg');
+        $file2 = UploadedFile::fake()->image('avatar2.jpg');
+
+        $component = Livewire::test(FileUploadComponent::class)
+            ->set('photos', [$file1, $file2]);
+
+        $tmpFiles = $component->viewData('photos');
+
+        // Convert the photos property into a Collection of TemporaryUploadedFile instances
+        $component->set('photos', collect($tmpFiles));
+
+        $this->assertInstanceOf(\Illuminate\Support\Collection::class, $component->viewData('photos'));
+
+        $component->call('_removeUpload', 'photos', $tmpFiles[1]->getFilename())
+            ->assertDispatched('upload:removed', name: 'photos', tmpFilename: $tmpFiles[1]->getFilename());
+
+        $remainingFiles = $component->call('$refresh')->viewData('photos');
+
+        $this->assertInstanceOf(\Illuminate\Support\Collection::class, $remainingFiles);
+        $this->assertCount(1, $remainingFiles);
     }
 
     public function test_if_the_file_property_is_an_array_the_uploaded_file_will_append_to_the_array()
@@ -599,7 +624,7 @@ class UnitTest extends \Tests\TestCase
             ->set('photo', $file);
 
         // Try to hijack the photo property to a path outside the temporary livewire directory root.
-        $component->set('photo', 'livewire-file:../dangerous.png')
+        $component->set('photo', 'livewire-file:'.TemporaryUploadedFile::signPath('../dangerous.png'))
             ->call('$refresh');
     }
 
@@ -833,6 +858,64 @@ class UnitTest extends \Tests\TestCase
             ]);
     }
 
+    public function test_temporary_upload_validation_uses_file_contents_instead_of_storage_metadata()
+    {
+        $disk = $this->useS3LikeTemporaryUploadDisk();
+
+        $disk->put('livewire-tmp/png-disguised-as.webp', file_get_contents(__DIR__.'/browser_test_image.png'));
+
+        $this->assertSame('image/webp', $disk->mimeType('livewire-tmp/png-disguised-as.webp'));
+
+        $file = TemporaryUploadedFile::createFromLivewire('png-disguised-as.webp');
+
+        $this->assertSame('image/png', $file->getMimeType());
+        $this->assertTrue(validator(['file' => $file], ['file' => 'mimes:png|mimetypes:image/png'])->passes());
+        $this->assertFalse(validator(['file' => $file], ['file' => 'mimes:webp|mimetypes:image/webp'])->passes());
+        $this->assertSame(1, $disk->readStreamCalls);
+    }
+
+    public function test_temporary_upload_mime_type_is_detected_past_an_id3_tag_larger_than_the_sample()
+    {
+        $disk = $this->useS3LikeTemporaryUploadDisk();
+
+        // A 70 KiB ID3v2 tag (like one holding cover art) followed by MPEG audio frames...
+        $tag = "ID3\x03\x00\x00\x00\x04\x30\x00".str_repeat("\x00", 70 * 1024);
+        $frames = str_repeat("\xFF\xFB\x90\x64".str_repeat("\x00", 413), 10);
+
+        $disk->put('livewire-tmp/song.mp3', $tag.$frames);
+
+        $file = TemporaryUploadedFile::createFromLivewire('song.mp3');
+
+        $this->assertSame('audio/mpeg', $file->getMimeType());
+        $this->assertTrue(validator(['file' => $file], ['file' => 'mimes:mp3'])->passes());
+        $this->assertSame(1, $disk->readStreamCalls);
+    }
+
+    public function test_temporary_upload_mime_type_does_not_fall_back_to_storage_metadata_for_empty_files()
+    {
+        $disk = $this->useS3LikeTemporaryUploadDisk();
+
+        $disk->put('livewire-tmp/empty.webp', '');
+
+        $this->assertSame('image/webp', $disk->mimeType('livewire-tmp/empty.webp'));
+
+        $file = TemporaryUploadedFile::createFromLivewire('empty.webp');
+
+        $this->assertSame('application/octet-stream', $file->getMimeType());
+    }
+
+    public function test_temporary_upload_mime_type_is_unknown_when_the_file_cannot_be_read()
+    {
+        $disk = $this->useS3LikeTemporaryUploadDisk();
+
+        $disk->put('livewire-tmp/unreadable.webp', file_get_contents(__DIR__.'/browser_test_image.png'));
+        $disk->canRead = false;
+
+        $file = TemporaryUploadedFile::createFromLivewire('unreadable.webp');
+
+        $this->assertSame('application/octet-stream', $file->getMimeType());
+    }
+
     public function test_the_default_file_upload_controller_middleware_overwritten()
     {
         config()->set('livewire.temporary_file_upload.middleware', ['throttle:60,1']);
@@ -842,6 +925,120 @@ class UnitTest extends \Tests\TestCase
 
         $this->assertEquals(['tenant', 'throttle:60,1'], $middleware);
     }
+
+    public function test_nested_uploads_survive_an_update_to_one_of_their_ancestor_paths()
+    {
+        $component = Livewire::test(NestedFileUploadComponent::class)
+            ->set('data.sections.first.rows.one.image', UploadedFile::fake()->image('one.jpg'))
+            ->set('data.sections.first.rows.two.image', UploadedFile::fake()->image('two.jpg'));
+
+        $one = $component->viewData('data')['sections']['first']['rows']['one']['image'];
+        $two = $component->viewData('data')['sections']['first']['rows']['two']['image'];
+
+        $component->set('data.sections.first', [
+            'rows' => [
+                'one' => ['image' => $one->serializeForLivewireResponse(), 'caption' => 'Updated'],
+                'two' => ['image' => $two->serializeForLivewireResponse(), 'caption' => ''],
+            ],
+        ]);
+
+        $rows = $component->viewData('data')['sections']['first']['rows'];
+
+        $this->assertInstanceOf(TemporaryUploadedFile::class, $rows['one']['image']);
+        $this->assertInstanceOf(TemporaryUploadedFile::class, $rows['two']['image']);
+        $this->assertEquals('one.jpg', $rows['one']['image']->getClientOriginalName());
+        $this->assertEquals('two.jpg', $rows['two']['image']->getClientOriginalName());
+        $this->assertEquals('Updated', $rows['one']['caption']);
+    }
+
+    public function test_a_row_added_alongside_a_nested_upload_doesnt_disturb_it()
+    {
+        $component = Livewire::test(NestedFileUploadComponent::class)
+            ->set('data.sections.first.rows.one.image', UploadedFile::fake()->image('one.jpg'));
+
+        $one = $component->viewData('data')['sections']['first']['rows']['one']['image'];
+
+        $component->set('data.sections.first', [
+            'rows' => [
+                'one' => ['image' => $one->serializeForLivewireResponse(), 'caption' => ''],
+                'three' => ['image' => null, 'caption' => 'New row'],
+            ],
+        ]);
+
+        $rows = $component->viewData('data')['sections']['first']['rows'];
+
+        $this->assertInstanceOf(TemporaryUploadedFile::class, $rows['one']['image']);
+        $this->assertEquals(['image' => null, 'caption' => 'New row'], $rows['three']);
+    }
+
+    public function test_preview_succeeds_when_the_proxys_forwarded_https_origin_is_not_trusted()
+    {
+        // Signs under https, then swaps https:// for http:// on the URL,
+        // simulating a proxy Laravel doesn't trust to report its real origin.
+        Storage::fake('avatars');
+
+        $photo = Livewire::test(FileUploadComponent::class)
+            ->set('photo', UploadedFile::fake()->image('avatar.jpg'))
+            ->viewData('photo');
+
+        SupportDisablingBackButtonCache::$disableBackButtonCache = false;
+
+        URL::forceScheme('https');
+        $url = $photo->temporaryUrl();
+        URL::forceScheme(null);
+
+        $this->assertStringStartsWith('https://', $url);
+
+        $url = preg_replace('#^https://#', 'http://', $url);
+
+        $this->get($url)->assertOk();
+    }
+
+    protected function useS3LikeTemporaryUploadDisk()
+    {
+        config()->set('livewire.temporary_file_upload.disk', 'tmp-for-tests');
+
+        // Simulate a remote disk returning stored upload metadata instead of inspecting the file...
+        $adapter = new \League\Flysystem\Local\LocalFilesystemAdapter(
+            $root = storage_path('framework/testing/disks/tmp-for-tests'),
+            null,
+            LOCK_EX,
+            \League\Flysystem\Local\LocalFilesystemAdapter::DISALLOW_LINKS,
+            new \League\MimeTypeDetection\ExtensionMimeTypeDetector(),
+        );
+
+        $disk = new class(new \League\Flysystem\Filesystem($adapter), $adapter, ['root' => $root]) extends FilesystemAdapter {
+            public $canRead = true;
+            public $readStreamCalls = 0;
+
+            public function readStream($path)
+            {
+                $this->readStreamCalls++;
+
+                return $this->canRead ? parent::readStream($path) : null;
+            }
+        };
+
+        Storage::set('tmp-for-tests', $disk);
+
+        return $disk;
+    }
+}
+
+class NestedFileUploadComponent extends TestComponent
+{
+    use WithFileUploads;
+
+    public $data = [
+        'sections' => [
+            'first' => [
+                'rows' => [
+                    'one' => ['image' => null, 'caption' => ''],
+                    'two' => ['image' => null, 'caption' => ''],
+                ],
+            ],
+        ],
+    ];
 }
 
 class DummyMiddleware

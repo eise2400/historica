@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "CI"
+    target-branch: "3.10.x"
+    groups:
+      doctrine:
+        patterns:
+          - "doctrine/*"

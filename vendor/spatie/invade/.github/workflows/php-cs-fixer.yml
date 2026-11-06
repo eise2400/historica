@@ -1,0 +1,23 @@
+name: Check styling
+
+on: [push, pull_request]
+
+jobs:
+  php-cs-fixer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v4
+
+      - name: Check formatting
+        run: composer format -- --dry-run --diff
